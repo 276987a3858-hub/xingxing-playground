@@ -1,0 +1,15 @@
+:root {
+  --bg-deep: #070b1a;
+  --bg-panel: rgba(18, 24, 48, 0.72);
+  --star: #e8ecff;
+  --glow: #9fc2ff;
+  --accent: #ffd6e7;
+  --accent-2: #b9e0ff;
+
+  --radius: 18px;
+  --shadow: 0 8px 32px rgba(0, 0, 0, .45);
+  --font-ui: "Noto Sans SC", system-ui, sans-serif;
+
+  --t-fade: .45s;
+  --t-door: .9s;
+}

@@ -1,0 +1,290 @@
+/* public/voice.css — 聊天语音消息（录音面板 + 语音气泡）
+ * 只作用于聊天页新增的语音控件，不改动任何既有聊天样式；
+ * 颜色全部取自 styles.css 的变量，跟随房间的柔和紫白风格。
+ */
+
+/* ===== 录音面板：贴在 composer 上方，不挤占文字输入 ===== */
+.voice-panel {
+  margin: 0 13px 10px;
+  padding: 12px 13px 11px;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.9);
+  box-shadow: 0 6px 22px rgba(91, 63, 107, 0.08);
+}
+.voice-panel[hidden] { display: none; }
+
+.vp-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 9px;
+}
+.vp-title { font-size: 12.5px; color: #5b3f6b; letter-spacing: .5px; }
+.vp-close {
+  border: 0;
+  background: none;
+  color: var(--muted);
+  font-size: 17px;
+  line-height: 1;
+  padding: 2px 6px;
+  border-radius: 8px;
+}
+.vp-close:hover { background: rgba(91, 63, 107, .07); color: var(--ink); }
+
+.vp-body { display: flex; align-items: center; gap: 10px; }
+.vp-rec {
+  flex: 0 0 auto;
+  min-width: 92px;
+  padding: 9px 14px;
+  border: 1px solid rgba(207, 122, 160, .38);
+  border-radius: 99px;
+  background: linear-gradient(135deg, #f7e6ef, #f2dbe9);
+  color: #9c4f74;
+  font-size: 13px;
+  transition: transform .15s, background .2s, box-shadow .2s;
+}
+.vp-rec:hover { box-shadow: 0 4px 14px rgba(196, 122, 160, .22); }
+.vp-rec:active { transform: scale(.97); }
+.vp-rec.is-recording {
+  background: linear-gradient(135deg, #e88aa9, #d9739a);
+  border-color: #d9739a;
+  color: #fff;
+  animation: vp-pulse 1.6s ease-in-out infinite;
+}
+.vp-rec[disabled] { opacity: .55; }
+@keyframes vp-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(217, 115, 154, .34); }
+  50% { box-shadow: 0 0 0 7px rgba(217, 115, 154, 0); }
+}
+
+.vp-meta { flex: 1 1 auto; min-width: 0; }
+.vp-time {
+  font-size: 17px;
+  color: #4a3858;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: .5px;
+  line-height: 1.3;
+}
+.vp-hint {
+  font-size: 11.5px;
+  color: var(--muted);
+  line-height: 1.6;
+  margin-top: 1px;
+}
+.vp-hint[data-kind="warn"] { color: #b3693f; }
+
+.vp-play {
+  flex: 0 0 auto;
+  padding: 8px 12px;
+  border: 1px solid var(--line);
+  border-radius: 99px;
+  background: rgba(255, 255, 255, .85);
+  color: #5b3f6b;
+  font-size: 12px;
+}
+.vp-play[hidden] { display: none; }
+.vp-play:hover { background: #fff; }
+
+.vp-meter {
+  display: none;
+  height: 3px;
+  margin: 9px 2px 0;
+  border-radius: 99px;
+  background: linear-gradient(90deg, rgba(217, 115, 154, .18), rgba(217, 115, 154, .7), rgba(217, 115, 154, .18));
+  background-size: 200% 100%;
+  animation: vp-flow 1.4s linear infinite;
+}
+@keyframes vp-flow {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+.vp-transcript { margin-top: 10px; }
+.vp-transcript textarea {
+  width: 100%;
+  min-height: 62px;
+  max-height: 132px;
+  resize: vertical;
+  padding: 9px 11px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, .85);
+  color: var(--ink);
+  font-size: 13px;
+  line-height: 1.65;
+}
+.vp-transcript textarea:focus { border-color: #9b8ba3; outline: none; }
+.vp-transcript-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: 5px;
+}
+.vp-asr-state {
+  font-size: 11px;
+  color: var(--muted);
+  line-height: 1.6;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.vp-asr-state[data-kind="live"] { color: #7d6194; }
+.vp-asr-state[data-kind="warn"] { color: #b3693f; }
+.vp-dict {
+  flex: 0 0 auto;
+  border: 0;
+  background: none;
+  padding: 2px 0;
+  font-size: 11.5px;
+  color: #8b7b98;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.vp-dict:hover { color: #5b3f6b; }
+
+.vp-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 11px;
+}
+.vp-btn {
+  padding: 8px 13px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, .85);
+  color: var(--ink);
+  font-size: 12.5px;
+}
+.vp-btn:hover { background: #fff; }
+.vp-btn[disabled] { opacity: .5; }
+.vp-send {
+  margin-left: auto;
+  padding: 8px 20px;
+  border: 0;
+  border-radius: 12px;
+  background: linear-gradient(135deg, #b5a4c9, #9b8ba3);
+  color: #fff;
+  font-size: 13px;
+}
+.vp-send[disabled] { opacity: .5; }
+
+/* ===== 语音消息气泡 ===== */
+.bubble.voice-bubble {
+  white-space: normal;
+  padding: 9px 12px;
+  max-width: 86%;
+}
+.bubble.voice-bubble--user { background: var(--user); }
+
+.vb-wrap { display: flex; align-items: center; gap: 9px; min-width: 168px; }
+
+.vb-play {
+  flex: 0 0 auto;
+  width: 30px;
+  height: 30px;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, .92);
+  color: #7d6194;
+  font-size: 12px;
+  box-shadow: 0 2px 7px rgba(91, 63, 107, .12);
+  transition: transform .15s, background .2s;
+}
+.vb-play:hover { background: #fff; }
+.vb-play:active { transform: scale(.94); }
+.vb-play.is-playing { background: #7d6194; color: #fff; }
+.vb-play[disabled] { opacity: .45; box-shadow: none; }
+
+.vb-track {
+  flex: 1 1 auto;
+  min-width: 56px;
+  height: 22px;
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  /* 轨道用背景线画（不额外加元素），进度由 .vb-fill 覆盖 */
+  background: linear-gradient(rgba(91, 63, 107, .16), rgba(91, 63, 107, .16)) left center / 100% 4px no-repeat;
+}
+.vb-fill {
+  display: block;
+  width: 0%;
+  height: 4px;
+  border-radius: 99px;
+  background: #9b8ba3;
+  transition: width .12s linear;
+}
+.bubble.voice-bubble--user .vb-fill { background: #7d6194; }
+.bubble.voice-bubble--user .vb-track {
+  background-image: linear-gradient(rgba(58, 37, 72, .2), rgba(58, 37, 72, .2));
+}
+
+.vb-time {
+  flex: 0 0 auto;
+  font-size: 11px;
+  color: #7b6a87;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.bubble.voice-bubble--user .vb-time { color: #5b3f6b; }
+
+.vb-toggle {
+  display: inline-block;
+  margin-top: 6px;
+  border: 0;
+  background: none;
+  padding: 0;
+  font-size: 11px;
+  color: #8b7b98;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.bubble.voice-bubble--user .vb-toggle { color: #6a4a7a; }
+
+.vb-text {
+  display: none;
+  margin-top: 6px;
+  padding-top: 6px;
+  border-top: 1px dashed rgba(91, 63, 107, .18);
+  font-size: 12.5px;
+  line-height: 1.7;
+  color: #4a3858;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.bubble.is-open .vb-text { display: block; }
+.vb-text--empty { color: #9b8ba3; font-style: italic; }
+.bubble.voice-bubble.is-missing .vb-time { color: #b3693f; }
+
+/* ===== AI 语音重播：始终可见，不依赖 hover（手机端原来的问题就是 hover 规则） ===== */
+.bubble .replay-btn {
+  display: inline-block;
+  margin-left: 8px;
+  cursor: pointer;
+  font-size: 13px;
+  line-height: 1;
+  opacity: .55;
+  transition: opacity .2s, transform .15s;
+}
+.bubble .replay-btn:hover { opacity: 1; }
+.bubble .replay-btn:active { transform: scale(.92); }
+
+/* ===== 手机端：hover 不存在的设备上也要能看到删除入口 ===== */
+@media (hover: none), (pointer: coarse) {
+  .bubble .del-btn { display: inline-block; }
+}
+
+@media (max-width: 420px) {
+  .voice-panel { margin: 0 10px 8px; padding: 10px 11px; }
+  .vp-rec { min-width: 80px; padding: 8px 12px; font-size: 12.5px; }
+  .vp-time { font-size: 16px; }
+  .vb-wrap { min-width: 148px; gap: 7px; }
+  .bubble.voice-bubble { max-width: 90%; padding: 8px 10px; }
+}
