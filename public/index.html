@@ -1,0 +1,466 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>亦揽星回</title>
+  <link rel="manifest" href="manifest.json">
+
+  <link rel="stylesheet" href="/shared/tokens.css">
+  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="voice.css">
+  <link rel="stylesheet" href="/butler/drawer.css">
+
+  <style>
+    .playground-door {
+      display: block;
+      position: relative;
+      overflow: hidden;
+      margin: 18px 0 8px;
+      padding: 22px;
+      border-radius: 20px;
+      text-decoration: none;
+      color: #e8ecff;
+      background: radial-gradient(circle at 85% 15%, rgba(159,194,255,.3), transparent 35%), linear-gradient(125deg, rgba(28,37,75,.96), rgba(54,43,83,.96));
+      border: 1px solid rgba(185,224,255,.3);
+      box-shadow: 0 8px 32px rgba(0,0,0,.25);
+      transition: transform .3s, border-color .3s;
+    }
+    .playground-door:hover { border-color: rgba(255,214,231,.8); }
+    .playground-door:active { transform: scale(.98); }
+    .playground-door-content { position: relative; display: flex; align-items: center; gap: 15px; z-index: 1; }
+    .playground-door-icon { font-size: 36px; color: #ffd6e7; text-shadow: 0 0 18px #9fc2ff; }
+    .playground-door-content strong { display: block; font-size: 17px; letter-spacing: 2px; }
+    .playground-door-content small { display: block; margin-top: 7px; font-size: 12px; opacity: .78; }
+    .playground-door-arrow { margin-left: auto; font-size: 24px; color: #b9e0ff; }
+    .playground-door-glow { position: absolute; width: 120px; height: 120px; right: 35px; top: -65px; border-radius: 50%; background: rgba(185,224,255,.2); filter: blur(30px); }
+
+    .lang-config-panel {
+      margin: 12px 14px 10px;
+      padding: 0;
+      border: 1px solid rgba(185, 190, 225, .35);
+      border-radius: 12px;
+      background: rgba(255, 255, 255, .58);
+      overflow: hidden;
+    }
+    .lang-config-panel summary {
+      padding: 11px 14px;
+      cursor: pointer;
+      list-style: none;
+      font-size: 14px;
+      font-weight: 600;
+      color: inherit;
+      user-select: none;
+    }
+    .lang-config-panel summary::-webkit-details-marker { display: none; }
+    .lang-config-panel summary::after {
+      content: '⌄';
+      float: right;
+      opacity: .7;
+      transition: transform .2s;
+    }
+    .lang-config-panel[open] summary::after { transform: rotate(180deg); }
+    .lang-config-options {
+      display: grid;
+      gap: 10px;
+      padding: 0 14px 13px;
+    }
+    .lang-config-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      font-size: 13px;
+    }
+    .lang-config-row select { max-width: 55%; }
+    .lang-config-row input[type="checkbox"] { width: 18px; height: 18px; }
+
+    .chat-photo-row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-top: 8px; }
+    .chat-photo-preview img { max-width: 110px; max-height: 110px; border-radius: 12px; display: block; margin-bottom: 6px; }
+  </style>
+
+  <script>
+    if (sessionStorage.getItem('ylxh.transition')) {
+      document.documentElement.classList.add('door-pending');
+    }
+  </script>
+  <style>
+    html.door-pending { background: #070b1a; }
+    html.door-pending body { visibility: hidden; }
+    html.door-pending::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      z-index: 99999;
+      pointer-events: none;
+      background: radial-gradient(circle at 50% 50%,
+        rgba(220,230,255,.95) 0%,
+        rgba(115,145,210,.65) 18%,
+        rgba(20,27,62,.96) 65%,
+        #070b1a 100%);
+    }
+  </style>
+</head>
+<body>
+<div class="app">
+  <div class="topbar">
+    <div class="brand">✦ 亦揽星回</div>
+    <div class="status-bar" id="statusBar">✨ 状态：正在发呆</div>
+    <div class="date" id="todayDate"></div>
+    <button class="bl-drw-leaf" onclick="openButlerDrawer()" title="生活管家" aria-label="打开生活管家"><span aria-hidden="true">🌿</span></button>
+  </div>
+
+  <section id="home" class="page active">
+    <div class="panel home-scene night" id="scene">
+      <div class="scene-content">
+        <div class="star" id="star" title="点点星星" onclick="starClick()"><span>★<i class="starface" id="starFace">•ᴗ•</i></span></div>
+        <h1>亦揽星回</h1><div class="sub">推开门，回到房间</div>
+        <div class="note-card">
+          <small>✉ 星星的今日便签</small>
+          <strong id="dailyTitle">用户，欢迎回来。</strong>
+          <p id="dailyText">愿今天也有一点温柔的光，落在你的肩上。</p>
+          <div style="margin-top:8px;font-size:12px;color:#7b6a87;" id="weatherText">🌤 获取天气中...</div>
+          <div style="text-align:right;font-size:12px;margin-top:7px;color:#857477">—— 星星留</div>
+        </div>
+        <div class="theater-card" id="theaterText" onclick="triggerSpecialAction('日常')">加载今天的小剧场...</div>
+        <div style="display:flex; gap:10px; margin-top:15px; justify-content:center; flex-wrap:wrap;">
+          <button class="small-btn" onclick="dailyGreet('morning')">☀️ 早安</button>
+          <button class="small-btn" onclick="pocketSearch()">🔍 摸他口袋</button>
+          <button class="small-btn" onclick="dailyGreet('night')">🌙 晚安</button>
+        </div>
+      </div>
+    </div>
+
+    <section class="panel lf-panel" id="lifeFeed" aria-label="小屋的动静"></section>
+
+    <div class="grid">
+      <button class="tile" onclick="showPage('chat')"><span class="ico">💬</span><b>聊天</b><small>把今天的话说给星星听</small></button>
+      <button class="tile" onclick="showPage('post')"><span class="ico">✉️</span><b>星星邮局</b><small>把今天的心情寄给未来</small></button>
+      <button class="tile" onclick="showPage('keepsakes')"><span class="ico">⭐</span><b>共同珍藏</b><small>留下值得记住的瞬间</small></button>
+      <button class="tile" onclick="showPage('settings')"><span class="ico">🕯️</span><b>房间设置</b><small>把小房间布置成喜欢的样子</small></button>
+      <button class="tile tile-wide" onclick="openSelfNarrative()"><span class="ico">🌙</span><span class="tile-wide-text"><b>机自述</b><small>小星眼里的你 · 他的观察、理解与还没弄明白的问题</small></span><span class="snv-tile-arrow">→</span></button>
+    </div>
+
+    <a href="/playground/" class="playground-door" id="enterPlayground">
+      <div class="playground-door-glow"></div>
+      <div class="playground-door-content">
+        <div class="playground-door-icon">✦</div>
+        <div>
+          <strong>星星游乐场</strong>
+          <small>推开这扇门，去看看星光藏着什么。</small>
+        </div>
+        <span class="playground-door-arrow">→</span>
+      </div>
+    </a>
+  </section>
+
+  <section id="chat" class="page">
+    <div class="page-head"><button class="back" onclick="showPage('home')">←</button><div><h2>聊天</h2><p>窗外有星星，慢慢说就好</p></div></div>
+    <div class="panel">
+
+      <details class="lang-config-panel" id="langConfigPanel">
+        <summary>🌍 语言与声音</summary>
+        <div class="lang-config-options">
+          <label class="lang-config-row" for="chatLangSelect">
+            <span>聊天文字</span>
+            <select class="field" id="chatLangSelect" onchange="changeChatLang(this.value)">
+              <option value="zh">中文</option>
+              <option value="bilingual">中英双语</option>
+            </select>
+          </label>
+          <label class="lang-config-row" for="chatVoiceToggle">
+            <span>英文语音自动朗读</span>
+            <input type="checkbox" id="chatVoiceToggle" checked onchange="toggleChatVoice(this.checked)">
+          </label>
+        </div>
+      </details>
+      <div class="chat-tools">
+        <input class="field" id="chatSearch" placeholder="搜索聊天……" oninput="renderMessages()">
+        <button class="small-btn" onclick="clearChat()">清空记录</button>
+        <div style="display:flex; gap:8px; margin-top:8px; width:100%; flex-wrap:wrap;">
+          <button class="small-btn" onclick="triggerMischief()">💜 使坏</button>
+          <button class="small-btn" onclick="triggerSpecialAction('盯')">👀 盯着他</button>
+          <button class="small-btn" onclick="triggerSpecialAction('摸头')">🤚 摸头</button>
+          <button class="small-btn" onclick="triggerSensorAction('查岗')">📞 查岗</button>
+          <button class="small-btn" onclick="writeStarDiary()">✍️ 让他写日记</button>
+          <button class="small-btn" onclick="rollDice()">🎲 摇骰子</button>
+        </div>
+      </div>
+      <div class="messages" id="messages"></div>
+      
+      <!-- 🌟 新增：表情面板 -->
+      <div id="stickerPanel" class="sticker-panel" style="display:none;"></div>
+
+      <div id="coaxBar" style="display:none; padding:10px 16px; background:rgba(255,100,100,0.1); border-radius:12px; margin:0 16px 10px 16px; border:1px solid #ffcccc;">
+        <div style="font-size:12px; color:#c0392b; margin-bottom:5px;" id="coaxText">💢 他吃醋了，说点好听的哄哄他（0/3）</div>
+        <div style="width:100%; height:8px; background:#ffe6e6; border-radius:4px; overflow:hidden;">
+          <div id="coaxFill" style="width:0%; height:100%; background:#e74c3c; transition:width 0.3s;"></div>
+        </div>
+      </div>
+      <div class="voice-panel" id="voicePanel" hidden aria-label="语音消息">
+        <div class="vp-head">
+          <span class="vp-title">🎙️ 语音消息</span>
+          <button type="button" class="vp-close" onclick="closeVoiceRecorder()" aria-label="关闭语音面板">×</button>
+        </div>
+        <div class="vp-body">
+          <button type="button" class="vp-rec" id="vpRecBtn" onclick="VoiceRecorder.toggle()">● 录音</button>
+          <div class="vp-meta">
+            <div class="vp-time" id="vpTime">0:00</div>
+            <div class="vp-hint" id="vpHint">点「录音」开始</div>
+          </div>
+          <button type="button" class="vp-play" id="vpPlayBtn" onclick="VoiceRecorder.preview()" hidden>▶ 试听</button>
+        </div>
+        <div class="vp-meter" id="vpMeter"></div>
+        <div class="vp-transcript">
+          <textarea id="vpTranscript" placeholder="语音转成的文字会出现在这里，可以修改后再发送"></textarea>
+          <div class="vp-transcript-foot">
+            <span class="vp-asr-state" id="vpAsrState" aria-live="polite">录音时会在本机同时听写</span>
+            <button type="button" class="vp-dict" id="vpDictBtn" onclick="VoiceRecorder.dictate()">只用听写（不录音）</button>
+          </div>
+        </div>
+        <div class="vp-actions">
+          <button type="button" class="vp-btn" id="vpRedoBtn" onclick="VoiceRecorder.redo()">重录</button>
+          <button type="button" class="vp-btn" onclick="VoiceRecorder.cancel()">取消</button>
+          <button type="button" class="vp-send" id="vpSendBtn" onclick="VoiceRecorder.send()">发送</button>
+        </div>
+      </div>
+
+      <div class="composer">
+        <textarea class="field" id="chatInput" placeholder="写点什么吧……" rows="1" oninput="resetIdleTimer()" onkeydown="handleChatKey(event)"></textarea>
+        <!-- 🌟 新增：表情按钮 -->
+        <button class="small-btn" onclick="toggleStickerPanel()">😀</button>
+        <button class="small-btn" id="micBtn" onclick="openVoiceRecorder()" title="发语音消息">🎙️</button>
+        <button class="primary" onclick="sendMessage()" id="sendBtn">发送</button>
+      </div>
+      <div class="chat-photo-row">
+        <label class="small-btn">添加照片<input id="chatPhoto" type="file" accept="image/*" hidden onchange="chooseChatPhoto(this)"></label>
+      </div>
+      <div class="chat-photo-preview" id="chatPhotoPreview" style="display:none"></div>
+    </div>
+    <p class="muted" id="statusText">正在检查 API 设置……</p>
+  </section>
+
+  <section id="post" class="page">
+    <div class="page-head"><button class="back" onclick="showPage('home')">←</button><div><h2>星星邮局</h2><p>把今天的心情，寄给未来。</p></div></div>
+
+    <div class="panel card">
+      <h3 class="section-title">✉ 写一封今日来信</h3>
+      <div class="form-row"><label>标题</label><input id="diaryTitle" class="field" placeholder="给今天起个名字"></div>
+      <div class="form-row"><label>写点什么</label><textarea id="diaryInput" placeholder="今天发生了什么？有什么想留下来的心情？"></textarea></div>
+      <div class="form-row"><label>添加照片（可选）</label><input id="diaryPhoto" type="file" accept="image/*" class="field"></div>
+      <button class="primary wide" onclick="saveDiary()">把信寄出去</button>
+    </div>
+    <div class="panel card"><h3 class="section-title">📮 时光邮册</h3><div id="diaryList"></div></div>
+
+    <div class="panel card">
+      <h3 class="section-title">📔 星星的日记</h3>
+      <p class="muted" style="margin-bottom:10px">让星星以自己的第一人称，写一篇最近的生活日记。</p>
+      <button class="primary wide" onclick="writeStarDiary()">让星星写日记</button>
+      <div id="starDiaryList" style="margin-top:12px;"></div>
+    </div>
+
+    <div class="panel card">
+      <h3 class="section-title">⏳ 寄一封未来的信</h3>
+      <div class="form-row"><label>标题</label><input id="futureTitle" class="field" placeholder="给未来的信起个名字"></div>
+      <div class="form-row"><label>写点什么</label><textarea id="futureInput" placeholder="想对未来的星星说什么？"></textarea></div>
+      <div class="form-row"><label>开启日期</label><input id="futureDate" type="date" class="field"></div>
+      <div class="form-row"><label>添加照片（可选）</label><input id="futurePhoto" type="file" accept="image/*" class="field"></div>
+      <button class="primary wide" onclick="sendFutureLetter()">寄出未来的信</button>
+    </div>
+    <div class="panel card"><h3 class="section-title">🔒 未来信</h3><div id="futureLetterList"></div></div>
+
+    <div class="panel card"><h3 class="section-title">✉️ 时光回信</h3><div id="timeReplyList"></div></div>
+  </section>
+
+  <section id="keepsakes" class="page">
+    <div class="page-head"><button class="back" onclick="showPage('home')">←</button><div><h2>共同珍藏</h2><p>有些瞬间不必特别盛大，只要我们觉得值得，就可以把它留下。</p></div></div>
+    <div class="panel card">
+      <h3 class="section-title">⭐ 留下一个瞬间</h3>
+      <div class="form-row"><label>这段回忆的名字</label><input id="keepTitle" class="field" placeholder="例如：一个很开心的傍晚"></div>
+      <div class="form-row"><label>想珍藏的内容</label><textarea id="keepContent" placeholder="写下那段对话、一个小进步，或一件值得记住的事。"></textarea></div>
+      <div class="setting-row">
+        <div><b>需要星星确认</b><small>勾选后先由星星回应，再由你最终确认</small></div>
+        <input type="checkbox" id="keepConfirm" checked>
+      </div>
+      <button class="primary wide" onclick="saveKeep()">放进纪念册</button>
+      <button class="primary wide" onclick="askStarKeep()" style="margin-top:8px;">⭐ 请星星珍藏</button>
+      <small class="empty-hint">让星星从最近的聊天里挑一件值得纪念的事，写成一份珍藏提议，再由你决定收不收。</small>
+    </div>
+    <div class="panel card"><h3 class="section-title">🌟 星星纪念册</h3><div id="keepList"></div></div>
+  </section>
+
+  <section id="narrative" class="page">
+    <div class="page-head"><button class="back" onclick="showPage('home')">←</button><div><h2>机自述</h2><p>小星眼里的你 · 他的观察、理解与疑问</p></div></div>
+    <div class="panel card snv-intro">
+      <p>这些不是档案。是他看着你、想着你的时候，自己留下来的话。</p>
+      <p>有的只是他看到的，有的只是他猜的——下面都替他标清楚了，别把猜测当成事实。</p>
+    </div>
+    <div class="panel card">
+      <div class="snv-filters" id="snvFilters" role="group" aria-label="按认识类型筛选"></div>
+      <div id="snViewList" class="snv-list" aria-live="polite"></div>
+    </div>
+    <p class="muted snv-foot">这里只显示已经正式留下的记录，还在草稿里、没经过确认的内容不会出现在这里。这个页面只用来看，不会改动任何记忆。</p>
+  </section>
+
+  <section id="settings" class="page">
+    <div class="page-head"><button class="back" onclick="showPage('home')">←</button><div><h2>房间设置</h2><p>一点一点，布置成喜欢的样子</p></div></div>
+
+    <div class="panel card">
+      <h3 class="section-title">🎵 白噪音（环境音）</h3>
+      <div class="setting-row">
+        <div>
+          <b>播放陪伴音</b>
+          <small>找一个舒服的声音，安静地待在一起</small>
+        </div>
+        <div style="display:flex; gap:5px; flex-wrap:wrap;">
+          <button class="small-btn" onclick="playNoise('rain')">🌧️ 雨声</button>
+          <button class="small-btn" onclick="playNoise('fire')">🔥 师兄</button>
+          <button class="small-btn" onclick="playNoise('breath')">🌬️ 呼吸</button>
+          <button class="small-btn" onclick="playNoise('sleep')">🌙 哄睡</button>
+          <button class="small-btn" onclick="playNoise('stop')">🔇 关闭</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="panel card">
+      <h3 class="section-title">🪟 房间外观</h3>
+      <div class="setting-row"><div><b>更换窗景图片</b><small>选择一张本地图片作为房间窗景</small></div><label class="small-btn">选择图片<input id="wallpaper" type="file" accept="image/*" hidden onchange="chooseWallpaper(this)"></label></div>
+      <div class="setting-row"><div><b>恢复默认窗景</b><small>清除自定义背景图片</small></div><button class="small-btn" onclick="resetWallpaper()">恢复默认背景</button></div>
+      <div class="setting-row"><div><b>灯光模式</b><small>调整房间氛围</small></div><select id="lightMode" class="field" style="width:auto" onchange="setLight(this.value)"><option value="soft">柔和</option><option value="bright">明亮</option><option value="sleep">睡前</option></select></div>
+    </div>
+
+    <div class="panel card">
+      <h3 class="section-title">💬 聊天设置</h3>
+      <div class="setting-row"><div><b>显示星星状态栏</b><small>显示他此刻的心情（困倦、吃醋等）</small></div><input type="checkbox" id="showStatus" checked onchange="saveSettings()"></div>
+      <div class="setting-row"><div><b>消息时间</b><small>显示每条消息的发送时间</small></div><input type="checkbox" id="showTime" checked onchange="saveSettings()"></div>
+      <div class="setting-row"><div><b>字体大小</b><small>调整聊天文字显示</small></div><select id="fontSize" class="field" style="width:auto" onchange="saveSettings()"><option value="13">小</option><option value="14" selected>标准</option><option value="16">大</option><option value="18">特大</option></select></div>
+    </div>
+
+    <div class="panel card">
+      <h3 class="section-title">🖐 触摸互动</h3>
+      <div class="setting-row">
+        <div><b>触摸 AI 回应</b><small>他身上的触点被碰到时，允许星星接着聊天自然回应。关闭后只显示提示，不调用 AI。</small></div>
+        <input type="checkbox" id="touchAIEnabled" onchange="saveSettings()">
+      </div>
+      <div class="setting-row">
+        <div><b>触摸语音播报</b><small>开启后，小星的触摸互动回复会尝试生成语音。关闭后仍可正常感知触摸并进行文字互动，已生成的语音仍可随时重听。</small></div>
+        <input type="checkbox" id="touchVoiceEnabled" onchange="saveSettings()">
+      </div>
+      <p class="muted" id="touchStatusText" style="margin-top:8px">触摸设备：未连接</p>
+      <div class="form-row" style="margin-top:8px"><label>设备通信地址</label><input id="touchEndpoint" class="field" placeholder="https://YOUR-TTS-PROXY.workers.dev/api/touch"></div>
+      <div class="form-row"><label>读取令牌</label><input id="touchToken" class="field" type="password" placeholder="只读令牌，不是设备密钥"></div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:6px">
+        <button class="small-btn" onclick="saveTouchLink(false)">连接设备</button>
+        <button class="small-btn" onclick="saveTouchLink(true)">断开</button>
+      </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px">
+        <button class="small-btn" onclick="StarTouch.simulate('head')">测试 · 头顶</button>
+        <button class="small-btn" onclick="StarTouch.simulate('left_shoulder')">测试 · 左肩</button>
+        <button class="small-btn" onclick="StarTouch.simulate('hand')">测试 · 手</button>
+      </div>
+    </div>
+
+    <div class="panel card">
+      <h3 class="section-title">🧠 长期记忆</h3>
+      <p class="muted" style="margin-bottom:10px">整理最近聊天里值得长期记住的事。下方逐条管理的是实际生效的记忆；旧记忆原文完整保留，不在此处改写。</p>
+      <div id="memoryV2Status" class="muted" style="margin-bottom:8px"></div>
+      <div id="memoryV2Panel"></div>
+      <div class="form-grid" style="margin-top:12px;">
+        <button class="action" onclick="generateMemory()">整理长期记忆</button>
+        <button class="action" onclick="renderMemoryV2Panel()">刷新条目</button>
+      </div>
+      <p class="muted" style="margin-top:12px;margin-bottom:6px">旧记忆原文（完整保留，仅供查看与备份核对）：</p>
+      <textarea id="memoryContent" readonly placeholder="旧记忆原文会显示在这里，完整保留、不会被条目操作改写。"></textarea>
+    </div>
+
+    <div class="panel card">
+      <h3 class="section-title">🔑 DeepSeek API Key</h3>
+      <p class="muted" style="margin-bottom:10px">粘贴你的 sk- 开头的密钥。只保存在你自己的浏览器里，不会上传到任何地方。</p>
+      <div class="form-row"><input id="apiKeyInput" class="field" type="password" placeholder="sk-..."></div>
+      <button class="primary" style="width:100%;padding:11px" onclick="saveApiKey()">保存</button>
+      <button class="small-btn" style="width:100%;padding:11px;margin-top:8px" onclick="clearApiKey()">清除 API Key</button>
+      <p class="muted" id="keyStatus" style="margin-top:10px"></p>
+    </div>
+
+    <div class="panel card">
+      <h3 class="section-title">📊 API 用量统计</h3>
+      <p class="muted" style="margin-bottom:10px">只记录 token 与费用估算，不保存聊天正文或密钥。usage 缺失的请求记为「不可用」，不会算成 0。</p>
+      <div class="form-grid">
+        <div class="form-row"><label>日期</label><select id="usageDate" class="field" onchange="renderUsagePanel()"><option value="all">全部日期</option></select></div>
+        <div class="form-row"><label>请求类型</label><select id="usageType" class="field" onchange="renderUsagePanel()"><option value="all">全部类型</option></select></div>
+      </div>
+      <div id="usageSummary" class="muted" style="margin-top:10px">还没有统计记录。</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px">
+        <button class="small-btn" onclick="renderUsagePanel(true)">刷新</button>
+        <button class="small-btn" onclick="clearUsageStats()">清空统计</button>
+      </div>
+    </div>
+
+    <div class="panel card">
+      <h3 class="section-title">📦 数据管理</h3>
+      <p class="muted">备份包含聊天、日记、珍藏和设置，以及语音消息的原始录音。照片与自定义窗景也会一并导出（英文朗读音频不导出）。</p>
+      <div class="form-grid"><button class="action wide" onclick="exportData()">导出备份</button><label class="action wide" style="text-align:center">导入恢复<input type="file" accept="application/json" hidden onchange="importData(this)"></label></div>
+      <div class="form-grid" style="margin-top:10px"><button class="action wide" onclick="exportChatMarkdown()">导出聊天记录（Markdown）</button><button class="action wide" onclick="exportChatAllJson()">导出全部会话（JSON）</button></div>
+      <p class="muted" style="margin-top:8px">聊天记录导出只用于阅读和保存：保留角色、正文、时间与来源，图片和语音只记类型、时长与片段 ID，不含原始文件。要恢复网站数据，请用上面的「导出备份」。</p>
+      <button class="action wide" style="margin-top:10px;color:#c0392b;" onclick="clearAllData()">清空所有数据</button>
+      <a class="action wide" style="margin-top:10px;display:block;text-align:center;text-decoration:none" href="/cleanup.html" target="_blank" rel="noopener">数据整理（逐条检查与删除）</a>
+    </div>
+  </section>
+  <div class="footer">在星光落下的地方，留一盏灯。</div>
+</div>
+<div class="toast" id="toast"></div>
+<audio id="bgAudio" loop></audio>
+
+<!-- 生活管家侧拉抽屉：常驻 iframe，与房间/聊天共用同一组件与数据 -->
+<div class="bl-drw-overlay" id="butlerDrawer" aria-hidden="true">
+  <div class="bl-drw-mask" onclick="closeButlerDrawer()"></div>
+  <aside class="bl-drw-panel" role="dialog" aria-modal="true" aria-label="生活管家">
+    <div class="bl-drw-head">
+      <span class="bl-drw-title">✦ 生活管家</span>
+      <span class="bl-drw-sub">日程 · 作息 · 周期</span>
+      <button class="bl-drw-close" onclick="closeButlerDrawer()" aria-label="关闭生活管家">×</button>
+    </div>
+    <iframe id="butlerFrame" class="bl-drw-frame" title="生活管家"></iframe>
+  </aside>
+</div>
+
+<script src="/shared/life-clock.js"></script>
+<script src="/shared/life-presence.js"></script>
+<script src="/shared/life-topics.js"></script>
+<script src="/shared/life-events.js"></script>
+<script src="/shared/life-state.js"></script>
+<script src="/shared/life-context.js"></script>
+<script src="/shared/life-facts.js"></script>
+<script src="/shared/life-scheduler.js"></script>
+<script src="/shared/life-feed.js"></script>
+<script src="/shared/transition.js"></script>
+<script src="/butler/butler-intent.js"></script>
+<script src="/shared/ai-usage-config.js"></script>
+<script src="/shared/ai-usage.js"></script>
+<script src="/shared/ai-client.js"></script>
+<script src="/shared/voice-config.js"></script>
+<script src="/shared/voice-store.js"></script>
+<script src="/shared/voice-service.js"></script>
+<script src="/shared/voice-bubble.js"></script>
+<script src="/shared/voice-recorder.js"></script>
+<script src="/shared/touch-bridge.js"></script>
+<script src="/shared/persona.js"></script>
+<script src="/shared/persona-memory.js"></script>
+<script src="/shared/long-term-memory-v2.js"></script>
+<script src="/shared/memory-generator.js"></script>
+<script src="/shared/memory-manager.js"></script>
+<script src="/shared/chat-export.js"></script>
+<script src="/shared/room-chat-reader.js"></script>
+<script src="/shared/history-retriever.js"></script>
+<script src="/shared/history-window.js"></script>
+<script src="/shared/prompt-layout.js"></script>
+<script src="/shared/request-composer.js"></script>
+<script src="/shared/self-narrative.js"></script>
+<script src="/shared/self-narrative-review.js"></script>
+<script src="/shared/self-narrative-dryrun.js"></script>
+<script src="/shared/self-narrative-auto.js"></script>
+<script src="/shared/self-narrative-view.js"></script>
+<script src="app.js"></script>
+<script src="/butler/drawer.js"></script>
+</body>
+</html>

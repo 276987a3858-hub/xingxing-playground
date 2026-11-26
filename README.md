@@ -9,22 +9,22 @@
 
 星星游乐场是一个个人 AI 陪伴方向的实验。它把一套原本较完整的本地应用做减法后，聚合成一条可以读的技术链路：浏览器前端承载交互与本地数据，一个轻量的代理层负责静态资源分发和模型 API 转发，浏览器与外部硬件通信服务之间另有触摸交互的入口。
 
-本次公开的范围只包含技术结构与通用代码。与具体角色设定、私人关系、长期记忆正文、真实聊天记录相关的内容和素材均不在仓库中。
+本次公开的范围是**完整的前端与服务端源码**，但明确剔除了：角色人设正文与个人画像、真实聊天记录与记忆数据、备份与日志、音频与表情包素材、以及一切密钥。源码里的人设引用已改为占位示例。
 
 ## 仓库内容
 
 | 路径 | 内容 |
 |---|---|
 | `docs/` | 8 篇技术文档：索引、架构、模块、请求流、记忆、存储、API、部署 |
-| `public/shared/life-clock.js` | 本地时区日期/时间纯函数，零依赖 |
-| `public/shared/history-window.js` | 请求层历史窗口：同 role 合并、滞回裁剪、当前消息剥离 |
-| `public/shared/prompt-layout.js` | messages 组装：稳定 system → 历史 → 动态 system → 当前消息 |
-| `tests/shared/` | 前两个纯函数的单元测试（31 项，`node --test` 直接跑） |
-| `public/shared/tokens.css` | 设计变量 |
-| `public/styles.css` / `public/voice.css` | 主样式与语音样式 |
-| `package.json` / `package-lock.json` | 依赖声明（仅 wrangler） |
+| `public/` | 前端完整源码：入口页、编排层、40 个 shared 模块、生活管家子系统、清理/迁移页与样式 |
+| `src/`、`functions/` | 两个部署入口的代理实现（Worker / Pages Function） |
+| `tests/` | 108 个测试与工具脚本：纯函数单测、浏览器集成脚本、迁移演练夹具 |
+| `firmware/` | ESP32 触摸与 TLS 对照程序（含 `secrets.example.h` 模板） |
+| `.env.example` | 环境变量模板，需自行填入密钥 |
+| `package.json` / `package-lock.json` / `wrangler.toml` | 依赖与部署声明 |
+| `generate-stickers.cjs` | 图片素材目录 → `manifest.json` 的构建脚本 |
 
-三个 JS 模块都能脱离本项目单独使用：不读存储、不发请求、不碰 DOM，行为完全由入参决定。
+三个请求管线模块（`life-clock`、`history-window`、`prompt-layout`）都能脱离本项目单独使用：不读存储、不发请求、不碰 DOM，行为完全由入参决定。
 
 ```bash
 node --test "tests/shared/*.test.mjs"
@@ -87,15 +87,16 @@ node --test "tests/shared/*.test.mjs"
 
 ## 不能克隆即用的说明（重要）
 
-本仓库是技术展示用途的整理结果，存在以下限制，因此**不保证克隆后可直接运行**：
+源码是完整的，但**仍然不能克隆后直接跑起来**，原因如下：
 
-- 前端依赖的若干模块与素材未纳入公开范围：**入口页 `public/index.html` 与编排层 `public/app.js` 不在仓库中**，直接打开会缺文件。
-- PWA Web App Manifest 缺失：入口页引用的 `manifest.json` 在原项目中就不存在（悬空引用），并非本仓库的删减。
-- 模型调用需要你自行配置服务端密钥，或在前端填写自己的 Key；硬件交互需要你自己的设备与端点。
-- 清理、迁移类能力在原项目中存在，但公开仓库不提供完整可运行的工具。
+- **没有密钥**：`src/worker.js` / `functions/api.js` 从环境变量读取 `DEEPSEEK_API_KEY`；请复制 `.env.example` 为 `.dev.vars`（wrangler）或按你的平台注入 secret。仓库内不含任何真实密钥。
+- **没有素材**：角色人设文本（`public/persona/*.txt`）、音频、表情包图片均不在仓库中，它们是私人内容或来源待确认的第三方素材。缺这些只会让对应功能失效，不影响代码阅读。
+- **PWA Web App Manifest 缺失**：入口页引用的 `manifest.json` 在原项目中就不存在（悬空引用），并非本仓库的删减。
+- **语音与硬件需要自有服务**：`public/shared/voice-config.js` 的 TTS 地址已替换为占位域名，硬件交互需要你自己的设备与端点。
+- **人设是占位文本**：`public/shared/persona.js` 里的第一、二层已改为示例文本，原项目的私人人设不随仓库公开。
 - 公开版本身不是一条经过完整回归测试的部署流水线。
 
-仓库里**能直接跑**的只有纯函数测试（见上文 `node --test`）。如果你想要一份可运行的最小对话链路，建议按 [部署说明](docs/07-deployment.md) 第 6 节的顺序自行补齐。
+仓库里**能直接跑**的是 `tests/shared/` 下的测试（见上文 `node --test`，630 项通过）。想跑起完整页面，按 [部署说明](docs/07-deployment.md) 第 6 节的顺序补齐密钥与素材即可。
 
 如果你只是想了解思路，读代码与后面的《技术讨论》即可；如果你尝试运行，请预期需要自行补齐上述空缺。
 

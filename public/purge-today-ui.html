@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>一次性工具 · 清空今日便签任务</title>
+<style>
+  :root{--bg:#f7f8fb;--card:#fff;--line:#e3e6ee;--txt:#222a3a;--muted:#6b7280;--accent:#3a6ea5;--danger:#b0392f;--ok:#1f7a4d}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--txt);font:14px/1.7 -apple-system,BlinkMacSystemFont,"Segoe UI","Microsoft YaHei",sans-serif;padding:24px}
+  .wrap{max-width:760px;margin:0 auto}
+  h1{font-size:20px;margin:0 0 4px}
+  .sub{color:var(--muted);margin-bottom:18px}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:16px 18px;margin-bottom:14px}
+  .card h2{font-size:15px;margin:0 0 10px}
+  .banner{background:#fff6e8;border:1px solid #f0cf9a;border-radius:10px;padding:12px 16px;margin-bottom:14px;color:#7a5410}
+  .row{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin:8px 0}
+  button{border:1px solid var(--accent);background:var(--accent);color:#fff;border-radius:7px;padding:8px 14px;font-size:14px;cursor:pointer}
+  button:disabled{background:#c8cfd8;border-color:#c8cfd8;cursor:not-allowed}
+  button.ghost{background:#fff;color:var(--accent)}
+  button.danger{background:var(--danger);border-color:var(--danger)}
+  code{background:#eef1f6;padding:1px 5px;border-radius:4px;font-size:12px}
+  .task{background:#f4f6fa;border:1px solid var(--line);border-radius:6px;padding:6px 10px;margin:5px 0}
+  .task .from{color:var(--muted);font-size:12px;margin-right:8px}
+  .kv{color:var(--muted);font-size:13px}
+  .kv b{color:var(--txt)}
+  textarea{width:100%;height:120px;font:12px/1.5 Consolas,monospace;border:1px solid var(--line);border-radius:7px;padding:8px;resize:vertical;background:#fbfcfe;color:var(--txt)}
+  .ok{color:var(--ok)} .bad{color:var(--danger)}
+  .out{white-space:pre-wrap;font-size:13px;background:#fbfcfe;border:1px solid var(--line);border-radius:7px;padding:10px;min-height:20px}
+  label.user{display:flex;gap:8px;align-items:flex-start;cursor:pointer}
+  .step{display:inline-block;width:22px;height:22px;line-height:22px;text-align:center;border-radius:50%;background:var(--accent);color:#fff;font-size:12px;margin-right:6px}
+  .note{color:var(--muted);font-size:12px;margin-top:8px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>一次性工具 · 清空今日便签任务</h1>
+  <div class="sub">仅清空今日便签的 <code>tasks</code>；留言、天气、历史便签、日记、珍藏、邮局数据全部保留。不补造任何任务。</div>
+
+  <div class="banner">
+    <b>操作顺序：</b>① 读取并核对 → ② 生成备份并下载 → ③ 勾选确认 → ④ 清空并回读校验。
+    备份未生成或未勾选确认时，清空按钮不可用。本页不联网、不调用 AI、不写 localStorage。
+  </div>
+
+  <div class="card">
+    <h2><span class="step">1</span>读取并核对</h2>
+    <div class="row"><button id="btnLoad">读取今日便签</button></div>
+    <div id="loadOut" class="out">（尚未读取）</div>
+  </div>
+
+  <div class="card">
+    <h2><span class="step">2</span>生成备份并下载</h2>
+    <div class="row">
+      <button id="btnBackup" class="ghost" disabled>生成备份并校验</button>
+      <button id="btnDownload" class="ghost" disabled>下载备份文件</button>
+    </div>
+    <div id="backupOut" class="out">（尚未生成备份）</div>
+    <textarea id="backupText" readonly placeholder="备份内容会显示在这里，也可直接复制保存"></textarea>
+    <div class="note">两份保障：点击“下载备份文件”保存到本地；或复制上方文本自行留存。备份是清理前整行原文，可直接回灌恢复。</div>
+  </div>
+
+  <div class="card">
+    <h2><span class="step">3</span>确认并清空</h2>
+    <label class="user"><input type="checkbox" id="chk" disabled> <span>我已下载（或复制）备份文件，并确认备份内容完整、可读取。同意清空今日便签的 <b id="cntInChk">全部任务</b>。</span></label>
+    <div class="row" style="margin-top:10px">
+      <button id="btnClear" class="danger" disabled>清空今日便签任务</button>
+    </div>
+    <div class="note">清空后请勿立刻打开旧版便签页——旧版 NoteCard 可能自动补一个模板任务。新版单向便签上线前保持现状即可。</div>
+  </div>
+
+  <div class="card">
+    <h2>执行结果</h2>
+    <div id="resultOut" class="out">（尚未执行）</div>
+  </div>
+</div>
+
+<script>
+(function(){
+  'use strict';
+  var DB='star_fifi_room', STORE='diaries', TYPE='note-day';
+  var S={rows:[],target:null,backupText:'',backupHash:'',confirmed:false,beforeTasks:0,beforeMsg:''};
+  var $={load:document.getElementById('btnLoad'),loadOut:document.getElementById('loadOut'),
+    backup:document.getElementById('btnBackup'),download:document.getElementById('btnDownload'),
+    backupOut:document.getElementById('backupOut'),backupText:document.getElementById('backupText'),
+    chk:document.getElementById('chk'),clear:document.getElementById('btnClear'),
+    result:document.getElementById('resultOut'),cnt:document.getElementById('cntInChk')};
+
+  function dayLocal(){var d=new Date(),p=function(n){return n<10?'0'+n:''+n;};return d.getFullYear()+'-'+p(d.getMonth()+1)+'-'+p(d.getDate());}
+  function openRO(){return new Promise(function(res,rej){
+    var r=indexedDB.open(DB);
+    r.onupgradeneeded=function(e){try{e.target.transaction.abort();}catch(_){}rej(new Error('当前打开环境里没有 star_fifi_room 数据库。如果你是在 WorkBuddy 预览面板或另一个浏览器/无痕窗口中打开的，这里看不到真实数据。请改用平时那个 Edge，在地址栏输入 http://127.0.0.1:8787/purge-today-ui.html 打开。'));};
+    r.onsuccess=function(){res(r.result);};
+    r.onerror=function(){rej(r.error||new Error('打开数据库失败'));};
+  });}
+  function getAll(db){return new Promise(function(res,rej){
+    var tx=db.transaction(STORE,'readonly'),q=tx.objectStore(STORE).getAll();
+    q.onsuccess=function(){res(q.result||[]);};q.onerror=function(){rej(q.error);};
+  });}
+  function esc(s){return String(s==null?'':s).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];});}
+
+  function renderLoad(){
+    var t=S.target;
+    if(!t){$.loadOut.innerHTML='<span class="bad">没有找到便签记录（type=note-day）。</span>';return;}
+    var tasks=(t.tasks||[]).map(function(x){return '<div class="task"><span class="from">'+esc(x.from||'')+'</span>'+esc(x.text||'')+'</div>';}).join('')||'<div class="kv">（无任务）</div>';
+    $.loadOut.innerHTML='<div>便签日期：<b>'+esc(t.date)+'</b>　行 id：<b>'+esc(t.id)+'</b>　任务数：<b>'+(t.tasks||[]).length+'</b></div>'
+      +'<div style="margin-top:6px">'+tasks+'</div>'
+      +'<div class="kv" style="margin-top:8px">留言：<b>'+esc(t.message&&t.message.text)+'</b>　来源：'+esc(t.message&&t.message.source)+'</div>'
+      +'<div class="kv">其他便签日期：'+esc(S.rows.map(function(n){return n.date;}).join(', ')||'无')+'</div>'
+      +'<div class="ok">核对无误后，进入第 2 步生成备份。</div>';
+  }
+
+  $.load.onclick=async function(){
+    $.loadOut.textContent='读取中…';
+    try{
+      var db=await openRO(),rows;
+      try{rows=await getAll(db);}finally{db.close();}
+      var notes=rows.filter(function(r){return r&&r.type===TYPE;}).sort(function(a,b){return String(b.date||'')<String(a.date||'')?-1:1;});
+      S.rows=notes;
+      var today=dayLocal();
+      S.target=notes.filter(function(n){return n.date===today;})[0]||notes[0]||null;
+      if(S.target){S.beforeTasks=(S.target.tasks||[]).length;S.beforeMsg=(S.target.message&&S.target.message.text)||'';$.cnt.textContent='全部 '+S.beforeTasks+' 条任务';}
+      renderLoad();
+      $.backup.disabled=!S.target;
+      $.backupOut.textContent=S.target?'（尚未生成备份）':'没有可处理的便签。';
+    }catch(e){$.loadOut.innerHTML='<span class="bad">读取失败：'+esc(e.message||e)+'</span>';}
+  };
+
+  $.backup.onclick=async function(){
+    if(!S.target)return;
+    $.backupOut.textContent='生成并校验中…';
+    try{
+      var raw=[S.target];
+      var text=JSON.stringify(raw,null,2);
+      var parsed=JSON.parse(text);
+      if(!Array.isArray(parsed)||parsed.length!==1||!parsed[0])throw new Error('备份回读结构异常');
+      if(!Array.isArray(parsed[0].tasks)||parsed[0].tasks.length!==S.beforeTasks)throw new Error('备份任务数不符');
+      if(((parsed[0].message||{}).text||'')!==S.beforeMsg)throw new Error('备份留言不符');
+      var bytes=new TextEncoder().encode(text).length;
+      var hash='（当前环境不可用）';
+      try{
+        var dig=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(text));
+        hash=Array.prototype.map.call(new Uint8Array(dig),function(b){return ('0'+b.toString(16)).slice(-2);}).join('');
+      }catch(_){}
+      S.backupText=text;S.backupHash=hash;
+      $.backupText.value=text;
+      $.backupOut.innerHTML='<span class="ok">备份校验通过</span>：1 行便签，'+S.beforeTasks+' 条任务，'+bytes+' 字节。SHA-256：<code>'+esc(hash)+'</code>';
+      $.download.disabled=false;
+      $.chk.disabled=false;
+    }catch(e){$.backupOut.innerHTML='<span class="bad">备份失败：'+esc(e.message||e)+'</span>';$.download.disabled=true;$.chk.disabled=true;}
+  };
+
+  $.download.onclick=function(){
+    if(!S.backupText)return;
+    var blob=new Blob([S.backupText],{type:'application/json'});
+    var url=URL.createObjectURL(blob);
+    var a=document.createElement('a');
+    a.href=url;a.download='note-today-backup-'+(S.target&&S.target.date||'today')+'.json';
+    document.body.appendChild(a);a.click();a.remove();
+    setTimeout(function(){URL.revokeObjectURL(url);},30000);
+    $.backupOut.innerHTML+=' <span class="ok">已触发下载，请确认浏览器保存成功。</span>';
+  };
+
+  $.chk.onchange=function(){S.confirmed=!!$.chk.checked;$.clear.disabled=!(S.confirmed&&S.backupText);};
+
+  $.clear.onclick=async function(){
+    if(!(S.confirmed&&S.backupText&&S.target))return;
+    $.clear.disabled=true;
+    $.result.textContent='写入中…';
+    try{
+      var id=S.target.id;
+      var db=await openRO();
+      try{
+        await new Promise(function(res,rej){
+          var tx=db.transaction(STORE,'readwrite'),os=tx.objectStore(STORE);
+          var copy={};Object.keys(S.target).forEach(function(k){copy[k]=S.target[k];});
+          copy.tasks=[];copy.updatedAt=Date.now();
+          os.put(copy);
+          tx.oncomplete=function(){res();};
+          tx.onerror=function(){rej(tx.error||new Error('写入失败'));};
+          tx.onabort=function(){rej(tx.error||new Error('写入被中止'));};
+        });
+      }finally{db.close();}
+      var db2=await openRO(),rows2;
+      try{rows2=await getAll(db2);}finally{db2.close();}
+      var after=rows2.filter(function(r){return r&&r.id===id&&r.type===TYPE;})[0];
+      var notesAfter=rows2.filter(function(r){return r&&r.type===TYPE;}).length;
+      var ok=after&&(after.tasks||[]).length===0
+        &&((after.message||{}).text||'')===S.beforeMsg
+        &&notesAfter===S.rows.length;
+      $.result.innerHTML='<b>清空任务：'+S.beforeTasks+' 条</b>　剩余任务：'+((after&&after.tasks||[]).length)+' 条'
+        +'<br>留言是否保留：'+(((after&&after.message||{}).text||'')===S.beforeMsg?'<span class="ok">是</span>':'<span class="bad">否</span>')
+        +'<br>便签行数（清理前/后）：'+S.rows.length+' / '+notesAfter
+        +'<br>备份位置：你下载的文件，或本页文本框中的 JSON'
+        +'<br><b class="'+(ok?'ok':'bad')+'">'+(ok?'校验通过：任务已清空，留言与其他便签未受影响':'校验失败：请立即用备份恢复并人工核对')+'</b>';
+      $.chk.disabled=true;$.download.disabled=true;
+    }catch(e){$.result.innerHTML='<span class="bad">清空失败，原记录保留：'+esc(e.message||e)+'</span>';$.clear.disabled=false;}
+  };
+})();
+</script>
+</body>
+</html>

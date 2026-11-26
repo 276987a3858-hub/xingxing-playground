@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>数据迁移 · 星星与用户</title>
+<style>
+  :root{
+    --bg:#141018; --card:#1d1824; --card2:#241e2d; --line:#332b3d;
+    --tx:#f2ecf6; --tx2:#b5a9c2; --tx3:#8b7f9a;
+    --acc:#c9a6ff; --ok:#7fd8a4; --warn:#ffcf7a; --bad:#ff8b8b;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  body{margin:0;background:var(--bg);color:var(--tx);font:15px/1.6 -apple-system,"PingFang SC","Microsoft YaHei",sans-serif;padding:18px 14px 60px}
+  h1{font-size:19px;margin:0 0 4px;font-weight:600}
+  .sub{color:var(--tx3);font-size:12.5px;margin-bottom:18px}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px;margin-bottom:14px}
+  .card h2{font-size:15px;margin:0 0 10px;font-weight:600;display:flex;align-items:center;gap:8px}
+  .step{display:inline-flex;width:20px;height:20px;border-radius:50%;background:var(--acc);color:#1a1226;font-size:12px;align-items:center;justify-content:center;font-weight:700}
+  .row{display:flex;justify-content:space-between;gap:10px;padding:5px 0;font-size:13.5px;border-bottom:1px dashed rgba(255,255,255,.06)}
+  .row:last-child{border-bottom:0}
+  .row .k{color:var(--tx2)}
+  .row .v{font-variant-numeric:tabular-nums;text-align:right;word-break:break-all}
+  button{font:inherit;border:0;border-radius:11px;padding:12px 16px;background:var(--acc);color:#1a1226;font-weight:600;width:100%;margin-top:10px}
+  button:disabled{background:#3a3245;color:#7c7189}
+  button.ghost{background:var(--card2);color:var(--tx);border:1px solid var(--line)}
+  button.bad{background:#5a2a2a;color:#ffd0d0;border:1px solid #7a3a3a}
+  .modes{display:grid;gap:8px;margin-top:6px}
+  .mode{display:flex;gap:10px;padding:10px 12px;border:1px solid var(--line);border-radius:11px;background:var(--card2);cursor:pointer}
+  .mode input{margin-top:3px;accent-color:var(--acc)}
+  .mode b{font-size:13.5px;display:block}
+  .mode span{font-size:12px;color:var(--tx3);display:block;line-height:1.45}
+  .mode.on{border-color:var(--acc);box-shadow:0 0 0 1px var(--acc) inset}
+  .hint{font-size:12.5px;color:var(--tx3);margin-top:8px}
+  .ok{color:var(--ok)} .warn{color:var(--warn)} .bad{color:var(--bad)}
+  .box{border:1px solid var(--line);background:var(--card2);border-radius:11px;padding:10px;margin-top:10px;font-size:13px}
+  .box.err{border-color:#6b2f2f;background:#2a1a1a}
+  .box.good{border-color:#2f5f45;background:#16241c}
+  .box.warnbox{border-color:#6a5527;background:#241f14}
+  ul.plain{margin:6px 0 0;padding-left:18px;color:var(--tx2);font-size:12.5px}
+  .prog{height:8px;background:#2b2435;border-radius:6px;overflow:hidden;margin-top:10px}
+  .prog > i{display:block;height:100%;width:0;background:var(--acc);transition:width .25s}
+  .stages{margin-top:10px;font-size:12.5px;color:var(--tx2)}
+  .stages div{padding:2px 0}
+  .mono{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:11.5px;color:var(--tx3);word-break:break-all}
+  input[type=file]{width:100%;color:var(--tx2);font-size:13px;padding:10px;background:var(--card2);border:1px dashed var(--line);border-radius:11px}
+  .chk{display:flex;gap:9px;align-items:flex-start;font-size:12.5px;color:var(--tx2);margin-top:10px}
+  .chk input{margin-top:2px;accent-color:var(--acc)}
+  .tag{font-size:11px;padding:1px 7px;border-radius:999px;background:#2f2a3a;color:var(--tx2)}
+</style>
+</head>
+<body>
+<h1>数据迁移</h1>
+<div class="sub">电脑 → 手机。电脑上的原始数据不会被删除或覆盖。</div>
+
+<div class="card">
+  <h2><span class="step">1</span>导出本机备份</h2>
+  <div id="exportStats"><div class="row"><span class="k">状态</span><span class="v">正在读取…</span></div></div>
+  <button id="btnExport">生成并下载 v2 备份</button>
+  <div class="hint">包含聊天（含语音与图片）、珍藏、日记、未来信、生活管家、电台声音素材、本地状态。不含 API Key。</div>
+  <div id="exportOut"></div>
+</div>
+
+<div class="card">
+  <h2><span class="step">2</span>选择备份文件并预览</h2>
+  <input type="file" id="fileIn" accept="application/json,.json">
+  <div id="fileOut"></div>
+</div>
+
+<div class="card">
+  <h2><span class="step">3</span>选择导入方式</h2>
+  <div class="modes" id="modes">
+    <label class="mode on" data-mode="merge">
+      <input type="radio" name="mode" value="merge" checked>
+      <span><b>合并（推荐）</b><span>保留手机上已有的数据。按 id 判重：完全相同的跳过；同 id 但内容不同时，备份里那条会分配新 id 插入，不覆盖手机原来的。</span></span>
+    </label>
+    <label class="mode" data-mode="replace">
+      <input type="radio" name="mode" value="replace">
+      <span><b>替换</b><span>先清空手机上的聊天 / 珍藏 / 日记 / 未来信 / 管家 / 声音素材，再整体写入备份。手机原有内容会消失（快照里有）。</span></span>
+    </label>
+    <label class="mode" data-mode="skip-existing">
+      <input type="radio" name="mode" value="skip-existing">
+      <span><b>跳过已存在</b><span>手机上已有同 id 的记录一律不动（哪怕内容不同），只补缺失的。适合只想补聊天记录的场合。</span></span>
+    </label>
+  </div>
+  <button id="btnPlan" class="ghost" disabled>预览导入计划</button>
+  <div id="planOut"></div>
+</div>
+
+<div class="card">
+  <h2><span class="step">4</span>先备份手机现状</h2>
+  <button id="btnSnapshot" disabled>生成手机快照并校验</button>
+  <div id="snapOut"></div>
+  <label class="chk"><input type="checkbox" id="snapOk" disabled><span>我已确认快照文件已经保存（截图/文件管理里能看到）。导入失败时靠它恢复手机原有内容。</span></label>
+</div>
+
+<div class="card">
+  <h2><span class="step">5</span>开始导入</h2>
+  <button id="btnImport" disabled>开始导入</button>
+  <div id="progWrap" style="display:none">
+    <div class="prog"><i id="progBar"></i></div>
+    <div class="stages" id="progText"></div>
+  </div>
+  <div id="importOut"></div>
+</div>
+
+<div class="card" id="journalCard" style="display:none">
+  <h2>中断的导入</h2>
+  <div id="journalOut"></div>
+  <button id="btnResume" class="ghost">用同一份备份继续</button>
+  <button id="btnUndo" class="bad">撤销本次导入写入的记录</button>
+  <div class="hint">撤销只会删除本次导入登记过的记录，不会恢复被「替换」模式清掉的原有数据；原有数据在手机快照里。</div>
+</div>
+
+<script src="/shared/backup-format.js"></script>
+<script src="/shared/backup-io.js"></script>
+<script src="/migrate.js"></script>
+</body>
+</html>

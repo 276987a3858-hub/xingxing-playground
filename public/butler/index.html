@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#eef0f9">
+  <title>生活管家 · 亦揽星回</title>
+  <link rel="stylesheet" href="/shared/tokens.css">
+  <link rel="stylesheet" href="/butler/butler.css">
+</head>
+<body>
+<main class="app">
+  <header class="topbar">
+    <div class="brand">✦ 生活管家</div>
+    <a class="back-btn" href="/">← 回到房间</a>
+  </header>
+
+  <section class="greet">
+    <span class="greet-spark" aria-hidden="true">✦</span>
+    <p class="greet-line">今天也慢慢来，我陪着你。</p>
+    <span class="greet-sprig" aria-hidden="true">🌿</span>
+  </section>
+
+  <nav class="tabs" role="tablist" aria-label="生活管家功能">
+    <button class="tab active" data-tab="today" role="tab" aria-selected="true">今日</button>
+    <button class="tab" data-tab="tasks" role="tab" aria-selected="false">待办</button>
+    <button class="tab" data-tab="sleep" role="tab" aria-selected="false">作息</button>
+    <button class="tab" data-tab="cycle" role="tab" aria-selected="false">周期</button>
+    <button class="tab" data-tab="tx" role="tab" aria-selected="false">记账</button>
+    <button class="tab" data-tab="history" role="tab" aria-selected="false">记录</button>
+  </nav>
+
+  <!-- 今日安排 -->
+  <section class="panel view active" id="view-today">
+    <h2 class="section-title today-title">☀️ 今日安排 <span class="muted" id="todayLabel"></span></h2>
+    <div class="stat-row" id="todayStats"></div>
+    <div class="quick-add">
+      <input id="quickTitle" class="field" placeholder="想记下点什么？写完按回车" maxlength="80">
+      <button class="primary" id="quickAddBtn">记一件</button>
+    </div>
+    <div id="todayList" class="record-list"><p class="empty">加载中……</p></div>
+    <div class="today-extra">
+      <div class="mini-card sleep-card">
+        <h3>🌙 最近的睡眠</h3>
+        <div id="todaySleep" class="muted">—</div>
+      </div>
+      <div class="mini-card cycle-card">
+        <h3>🌸 周期的节奏</h3>
+        <div id="todayCycle" class="muted">—</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 待办日程 -->
+  <section class="panel view" id="view-tasks">
+    <h2 class="section-title">🌿 待办与日程</h2>
+    <form id="taskForm" class="form-grid">
+      <label class="full">事项内容<input class="field" id="tTitle" placeholder="例如：交房租" maxlength="80" required></label>
+      <label>类型
+        <select id="tType" class="field"><option value="todo">待办</option><option value="event">日程</option></select>
+      </label>
+      <label>日期<input class="field" id="tDate" type="date" required></label>
+      <label>时间（可选）<input class="field" id="tTime" type="time"></label>
+      <label>备注（可选）<input class="field" id="tNote" maxlength="120"></label>
+      <label class="full"><input type="checkbox" id="tEnableRemind"> 设置提醒时间（供后续阶段使用，今日不会推送）</label>
+      <label id="tRemindWrap" class="full" style="display:none">提醒时间<input class="field" id="tRemind" type="datetime-local"></label>
+      <div class="full form-actions">
+        <button type="submit" class="primary" id="tSubmit">添加事项</button>
+        <button type="button" class="small-btn" id="tReset">取消编辑</button>
+      </div>
+    </form>
+    <div class="filter-row">
+      <button class="chip active" data-task-filter="all">全部</button>
+      <button class="chip" data-task-filter="pending">待处理</button>
+      <button class="chip" data-task-filter="done">已完成</button>
+      <button class="chip" data-task-filter="cancelled">已取消</button>
+    </div>
+    <div id="taskList" class="record-list"><p class="empty">加载中……</p></div>
+  </section>
+
+  <!-- 作息记录 -->
+  <section class="panel view" id="view-sleep">
+    <h2 class="section-title">🌙 起床与睡觉</h2>
+    <p class="muted">23:30 入睡、次日 07:30 起床，会被记为一次完整 8 小时睡眠。同一天再次保存即视为补录修改。</p>
+    <form id="sleepForm" class="form-grid">
+      <label>起床日期<input class="field" id="sDate" type="date" required></label>
+      <label>入睡时间<input class="field" id="sSleep" type="time" required></label>
+      <label>起床时间<input class="field" id="sWake" type="time" required></label>
+      <label>备注（可选）<input class="field" id="sNote" maxlength="80"></label>
+      <div class="full form-actions">
+        <button type="submit" class="primary">保存记录</button>
+        <button type="button" class="small-btn" id="sNow">用当前时间填起床</button>
+      </div>
+    </form>
+    <div id="sleepList" class="record-list"><p class="empty">加载中……</p></div>
+  </section>
+
+  <!-- 月经周期 -->
+  <section class="panel view" id="view-cycle">
+    <h2 class="section-title">🌸 月经周期</h2>
+    <p class="muted privacy-note">🔒 周期、症状与备注只保存在本机浏览器，不上传云端，不参与任何网络请求。</p>
+    <p class="muted cycle-help">开始和结束分开记录：刚开始时只填开始日期，结束日期留空；经期结束后再回来填实际结束日期。留空表示这次经期还没结束，系统不会自动填写，也不会自动判定结束。</p>
+    <form id="cycleForm" class="form-grid">
+      <label>实际开始日期（必填）<input class="field" id="cStart" type="date" required></label>
+      <label>实际结束日期（结束后再填，可留空）<input class="field" id="cEnd" type="date"></label>
+      <label class="full">症状（可多选，点击切换）
+        <div class="symptom-chips" id="symptomChips"></div>
+      </label>
+      <label>身体状态（可选）
+        <select id="cState" class="field">
+          <option value="">未填写</option><option>良好</option><option>疲惫</option><option>情绪低落</option>
+          <option>容易烦躁</option><option>疼痛明显</option><option>睡眠不佳</option>
+        </select>
+      </label>
+      <label>备注（可选）<input class="field" id="cNote" maxlength="120"></label>
+      <div class="full form-actions">
+        <button type="submit" class="primary" id="cSubmit">保存记录</button>
+        <button type="button" class="small-btn" id="cReset">取消编辑</button>
+      </div>
+    </form>
+    <div class="cycle-current" id="cycleCurrent"></div>
+    <div class="prediction-card" id="prediction"><p class="empty">计算中……</p></div>
+    <div id="cycleList" class="record-list"><p class="empty">加载中……</p></div>
+  </section>
+
+  <!-- 记账 -->
+  <section class="panel view" id="view-tx">
+    <h2 class="section-title">📒 记账小本</h2>
+    <div class="stat-row" id="txStats"></div>
+    <div id="txCategoryBars" class="cat-bars"></div>
+    <form id="txForm" class="form-grid">
+      <label>类型
+        <select id="xType" class="field">
+          <option value="expense">支出</option>
+          <option value="income">收入</option>
+        </select>
+      </label>
+      <label>金额（元）<input class="field" id="xAmount" type="number" min="0.01" step="0.01" placeholder="例如 12.5" required></label>
+      <label>日期<input class="field" id="xDate" type="date" required></label>
+      <label>分类<select id="xCategory" class="field"></select></label>
+      <label class="full">备注（可选）<input class="field" id="xNote" maxlength="60" placeholder="例如：午饭"></label>
+      <div class="full form-actions">
+        <button type="submit" class="primary" id="xSubmit">记一笔</button>
+        <button type="button" class="small-btn" id="xReset">取消编辑</button>
+      </div>
+    </form>
+    <div id="txList" class="record-list"><p class="empty">加载中……</p></div>
+  </section>
+
+  <!-- 历史记录 -->
+  <section class="panel view" id="view-history">
+    <h2 class="section-title">🕰️ 生活记录</h2>
+    <p class="muted">这里汇总所有事项的新建、修改、完成、延期、取消，以及作息和周期记录的变更。</p>
+    <div id="historyList" class="record-list"><p class="empty">加载中……</p></div>
+  </section>
+
+  <footer class="footer">所有生活数据只保存在你的浏览器里 · 亦揽星回</footer>
+</main>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+<script type="module" src="/butler/butler-app.js"></script>
+</body>
+</html>

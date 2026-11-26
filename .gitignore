@@ -1,0 +1,10 @@
+node_modules/
+.dev.vars
+.wrangler/
+.env
+.env.*
+!.env.example
+.DS_Store
+
+# 固件设备密钥（只在本机，绝不提交）
+firmware/**/secrets.h

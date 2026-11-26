@@ -1,0 +1,122 @@
+/* public/butler/drawer.css — 生活管家侧拉抽屉外壳
+ * 仅作用于抽屉，前缀 bl-drw-，不覆盖房间页/生活管家页任何既有样式。
+ * 抽屉内容是常驻 iframe(/butler/)，业务与数据逻辑仍在原页面，未改动。
+ */
+.bl-drw-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9998;
+  visibility: hidden;
+  pointer-events: none;
+}
+.bl-drw-overlay.is-open {
+  visibility: visible;
+  pointer-events: auto;
+}
+.bl-drw-mask {
+  position: absolute;
+  inset: 0;
+  background: rgba(28, 24, 48, .46);
+  opacity: 0;
+  transition: opacity .28s ease;
+  -webkit-backdrop-filter: blur(2px);
+  backdrop-filter: blur(2px);
+}
+.bl-drw-overlay.is-open .bl-drw-mask { opacity: 1; }
+
+.bl-drw-panel {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: min(460px, 90vw);
+  border-radius: 26px 0 0 26px;
+  display: flex;
+  flex-direction: column;
+  background: linear-gradient(180deg, #fdfbf8 0%, #f8f4fc 48%, #efeaf9 100%);
+  box-shadow: -14px 0 46px rgba(80, 66, 120, .2);
+  transform: translateX(103%);
+  transition: transform .32s cubic-bezier(.22, .61, .36, 1);
+  will-change: transform;
+}
+.bl-drw-overlay.is-open .bl-drw-panel { transform: translateX(0); }
+
+.bl-drw-head {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 13px 14px 13px 18px;
+  border-bottom: 1px solid rgba(170, 160, 205, .22);
+  background: rgba(255, 253, 250, .72);
+  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(8px);
+}
+.bl-drw-title {
+  font-size: 14px;
+  letter-spacing: 2px;
+  color: #6b5f92;
+  font-weight: 600;
+}
+.bl-drw-sub {
+  font-size: 11px;
+  color: #9a92b5;
+  margin-left: 2px;
+  letter-spacing: .5px;
+}
+.bl-drw-close {
+  margin-left: auto;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  border: 1px solid rgba(170, 160, 205, .34);
+  background: rgba(255, 255, 255, .86);
+  color: #7a6f9e;
+  font-size: 21px;
+  line-height: 1;
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+  transition: transform .15s, background .15s;
+}
+.bl-drw-close:hover { background: #f3effc; }
+.bl-drw-close:active { transform: scale(.92); }
+
+.bl-drw-frame {
+  flex: 1 1 auto;
+  width: 100%;
+  border: 0;
+  background: transparent;
+}
+
+/* 房间顶栏的叶子入口：小巧、几乎不占位置 */
+.bl-drw-leaf {
+  flex: 0 0 auto;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border-radius: 50%;
+  border: 1px solid rgba(160, 170, 210, .42);
+  background: rgba(255, 255, 255, .55);
+  color: #5a6b8c;
+  font-size: 13px;
+  line-height: 1;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgba(120, 140, 200, .12);
+  transition: transform .18s ease, background .18s ease, box-shadow .18s ease;
+}
+.bl-drw-leaf:hover { background: rgba(255, 255, 255, .9); box-shadow: 0 4px 14px rgba(120, 140, 200, .2); }
+.bl-drw-leaf:active { transform: scale(.9); }
+
+@media (max-width: 560px) {
+  /* 手机端接近全宽，但留一条窄边并做圆角，保留「边缘感」 */
+  .bl-drw-panel {
+    width: calc(100vw - 12px);
+    border-radius: 24px 0 0 24px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .bl-drw-mask, .bl-drw-panel { transition: none; }
+}

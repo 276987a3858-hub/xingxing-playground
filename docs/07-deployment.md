@@ -105,17 +105,29 @@ node --test "tests/shared/*.test.mjs"
 | Node | 18+（`node:test` 内置；实测 22.22.2） |
 | 第三方依赖 | **无** |
 | 文件 IO | **无**（纯函数测试，不读写磁盘） |
-| 实测结果 | 31 / 31 通过 |
+| 实测结果 | `tests/shared/*.test.mjs` → **630 / 630 通过**；其中两个纯函数文件 31 / 31 |
 
 > 传目录的写法（`node --test tests/shared/`）在部分 Node/Windows 组合下会报 `MODULE_NOT_FOUND`，用通配符形式更稳。
 
-只覆盖三个纯函数模块（`life-clock`、`history-window`、`prompt-layout` 的部分行为）。`prompt-layout.test.mjs` 未纳入本仓库——它的测试夹具包含专属文本，需要中性化后才能公开。
+**全量跑 `tests/**/*.test.mjs` 会有 21 项失败，原因分三类，均与代码质量无关**：
 
-### 4.2 跑完整前端（本仓库不具备条件）
+| 失败项 | 原因 |
+|---|---|
+| `tests/chat/persona-layers.test.mjs` 等 18 项 | 依赖 `public/persona/*.txt` 的真实人设文本，该目录不随仓库公开 |
+| `tests/radio/radio-program.test.mjs` | 依赖 `public/playground/radio-program.js`，该目录不随仓库公开 |
+| `L04`/`L05` 两项 | 原项目 `app.js` 已不存在 `needEnglishTranslation()`，测试未同步（既有漂移） |
 
-原项目的 `public/index.html` 用相对路径加载 38 个脚本、`manifest.json`、样式与素材。其中 `manifest.json` 在该项目目录里**并不存在**——`index.html:7` 的 `<link rel="manifest">` 是悬空引用，所以这项缺失不是本仓库删减造成的。本仓库只包含 38 个脚本中的 6 个（3 个 JS + 3 个 CSS）+ 无素材，缺失项会让页面直接报错。
+### 4.2 跑完整前端（需要先补密钥与素材）
 
-如果你有完整项目，本地跑法有两种：
+`public/` 与两个代理入口都在仓库里，`public/index.html` 引用的 38 个脚本全部存在。真正缺的是三类东西：
+
+1. **密钥**：复制 `.env.example` 为 `.dev.vars`，填入 `DEEPSEEK_API_KEY`。
+2. **人设文本**：`public/persona/*.txt`（第一、二层已由 `persona.js` 内置占位示例覆盖，第三至五层与特殊能力按需读取，缺失时自动跳过）。
+3. **素材**：音频、表情包图片。缺它们只影响对应功能，不影响页面加载。
+
+`manifest.json` 在该项目目录里**并不存在**——`index.html:7` 的 `<link rel="manifest">` 是悬空引用，所以这项 404 不是本仓库删减造成的。
+
+本地跑法：
 
 | 方式 | 命令 | 说明 |
 |---|---|---|
@@ -129,23 +141,22 @@ node --test "tests/shared/*.test.mjs"
 | 包含 | 说明 |
 |---|---|
 | 文档 8 篇 | 架构、模块、请求流、记忆、存储、API、部署、索引 |
-| `public/shared/life-clock.js` | 时间纯函数（可直接公开） |
-| `public/shared/history-window.js` | 历史窗口纯函数 |
-| `public/shared/prompt-layout.js` | messages 组装纯函数 |
-| `public/shared/tokens.css` | 设计变量 |
-| `public/styles.css` / `public/voice.css` | 样式 |
-| `tests/shared/*.test.mjs` | 前两个纯函数的测试 |
-| `package.json` / `package-lock.json` | 依赖声明（wrangler） |
+| `public/` | 入口页、编排层 `app.js`、`shared/` 40 个模块、`butler/` 子系统、样式、清理/迁移页 |
+| `src/worker.js`、`functions/api.js` | Worker 与 Pages Function 两个代理入口 |
+| `tests/` | 单测与浏览器脚本、迁移演练夹具 |
+| `firmware/` | ESP32 触摸与 TLS 对照程序，含 `secrets.example.h` 模板 |
+| `package.json`、`package-lock.json`、`wrangler.toml` | 依赖与部署声明 |
+| `.env.example` | 环境变量模板 |
 
 | 不包含 | 原因 |
 |---|---|
-| `public/index.html`、`public/app.js` | 含角色文案与私人页面结构；编排层需先拆分 |
-| `shared/persona*.js`、`self-narrative*.js`、`memory-*.js` | 人设与私人关系数据 |
-| `shared/request-composer.js`、`ai-client.js` | 含专属文案，需中性化 |
-| `src/worker.js`、`functions/api.js` | 两套代理需先合并/统一，再作为示例公开 |
-| `assets/`、`audio/`、表情包目录 | 素材版权与来源需单独确认；`manifest.json` 另见 §4.2（原项目即缺失） |
-| `wrangler.toml` | 指向未公开的 `src/worker.js`；本页以代码块形式给出内容 |
-| 备份、数据库、日志、`.dev.vars` | 私人数据与密钥 |
+| `public/persona/*.txt` | 私人角色人设正文与个人画像 |
+| `public/app.js` 内的第一、二层人设 | 已替换为占位示例文本 |
+| `audio/`、表情包图片 | 来源与版权待确认；随素材的私人图片 |
+| `public/playground/`、`public/assets/` | 实验页面与构建缓存 |
+| `backups/`、`screenshots/`、`docs/persona-v2/`、`docs/bracket-audit-*` | 备份、私人截图、角色设计稿、写作审计数据 |
+| `.dev.vars`、`firmware/**/secrets.h`、`kp-final.txt` | 真实密钥与测试输出日志 |
+| `MIGRATION.md` | 含真实部署地址与迁移操作流程 |
 
 ## 6. 如果你要基于这套结构做自己的项目
 
