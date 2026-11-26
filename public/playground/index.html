@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#eef0f9">
+  <title>星星游乐场</title>
+  <link rel="stylesheet" href="/shared/tokens.css">
+  <link rel="stylesheet" href="/playground/gomoku.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <script>
+    if (sessionStorage.getItem('ylxh.transition')) {
+      document.documentElement.classList.add('door-pending');
+    }
+  </script>
+  <style>
+    html.door-pending { background: #e8ecf5; }
+    html.door-pending body { visibility: hidden; }
+    html.door-pending::before {
+      content: ''; position: fixed; inset: 0; z-index: 99999; pointer-events: none;
+      background: radial-gradient(circle at 50% 50%, rgba(255,255,255,.96) 0%, rgba(200,215,250,.7) 18%, rgba(160,180,230,.5) 45%, rgba(120,140,200,.3) 70%, rgba(100,115,180,.15) 100%);
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0; min-height: 100vh; color: #3a4a6b;
+      font-family: var(--font-ui);
+      background:
+        radial-gradient(ellipse 80% 50% at 70% 10%, rgba(255,228,240,.35), transparent 60%),
+        radial-gradient(ellipse 60% 40% at 20% 80%, rgba(220,210,255,.3), transparent 55%),
+        radial-gradient(ellipse 100% 60% at 50% 0%, rgba(180,200,240,.25), transparent 50%),
+        linear-gradient(165deg, #eef0f9 0%, #e6e9f5 25%, #ddd8ee 55%, #d4d5f0 80%, #ced6ee 100%);
+      background-attachment: fixed;
+    }
+    .playground { position: relative; z-index: 1; width: min(900px, 92%); margin: auto; padding: 28px 0 50px; }
+    .topbar { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+    .brand { font-size: 15px; letter-spacing: 2px; color: #5a6b8c; }
+    .back-btn { border: 1px solid rgba(140,155,200,.35); border-radius: 30px; padding: 9px 16px; color: #4a5a7a; background: rgba(255,255,255,.55); cursor: pointer; transition: all 0.3s; }
+    .back-btn:hover { background: rgba(255,255,255,.8); border-color: rgba(120,140,200,.5); }
+    .hero { text-align: center; padding: 65px 10px 45px; }
+    .hero-star { font-size: 54px; color: #b89cd6; text-shadow: 0 0 35px rgba(180,160,230,.5); animation: float 3s ease-in-out infinite; }
+    .hero h1 { margin: 15px 0 10px; font-size: clamp(27px, 6vw, 40px); letter-spacing: 5px; color: #4a4a6a; }
+    .hero p { color: #7a8aa8; font-size: 13px; letter-spacing: 2px; }
+    .section-title { margin: 15px 0 18px; font-size: 15px; letter-spacing: 2px; color: #5a6b8c; }
+    .scene-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+    .scene-card { min-height: 135px; padding: 20px; border: 1px solid rgba(140,155,200,.18); border-radius: 19px; background: rgba(255,255,255,.6); color: #3a4a6b; text-align: left; transition: transform .2s, border-color .2s, box-shadow .2s; box-shadow: 0 2px 12px rgba(120,140,200,.08); }
+    .scene-card:not(.locked):hover { border-color: rgba(180,160,220,.5); transform: translateY(-2px); box-shadow: 0 6px 20px rgba(140,120,200,.12); }
+    .scene-card .icon { display: block; font-size: 27px; margin-bottom: 12px; }
+    .scene-card strong { display: block; font-size: 15px; color: #3a4a6a; }
+    .scene-card small { display: block; margin-top: 7px; color: #8a9ab8; font-size: 11px; line-height: 1.6; }
+    .scene-card.locked { opacity: .55; }
+    .notice { margin-top: 28px; padding: 17px; border-radius: 16px; text-align: center; background: rgba(255,255,255,.45); color: #7a8aa8; font-size: 12px; line-height: 1.8; }
+    @keyframes float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-9px); } }
+    @media (max-width: 480px) { .scene-grid { gap: 10px; } .scene-card { min-height: 125px; padding: 15px; } }
+  </style>
+</head>
+<body>
+  <main id="app" class="playground">
+    <header class="topbar">
+      <div class="brand">✦ 星星游乐场</div>
+      <button class="back-btn" id="backToRoom">← 回到房间</button>
+    </header>
+
+    <div id="lobby-scene">
+      <section class="hero">
+        <div class="hero-star">✦</div>
+        <h1>星星游乐场</h1>
+        <p>这里藏着一些，只属于我们的小游戏。</p>
+      </section>
+      <section>
+        <h2 class="section-title">✧ 选择一个小世界</h2>
+        <div class="scene-grid">
+          <div class="scene-card" data-scene="planets"><span class="icon">📖</span><strong>一起背单词</strong><small>和小星一起，把几个词慢慢记进心里。</small></div>
+          <div class="scene-card" data-scene="adventure"><span class="icon">🚀</span><strong>星空棋局</strong><small>在星光落满的棋盘上，和她认真下一局。</small></div>
+          <div class="scene-card" data-scene="puzzle"><span class="icon">🧩</span><strong>星光拼图</strong><small>把散落的星光，一点一点拼在一起。</small></div>
+          <div class="scene-card" data-scene="date"><span class="icon">🌙</span><strong>星夜21点</strong><small>夜色正好，和星星来一局21点。</small></div>
+          <div class="scene-card" data-scene="collection"><span class="icon">🎁</span><strong>共同珍藏</strong><small>和房间里收下的那些瞬间，是同一份记录。</small></div>
+          <div class="scene-card" data-scene="kitchen"><span class="icon">🍳</span><strong>厨房大危机</strong><small>和星星一起完成一场料理挑战</small></div>
+          <div class="scene-card" data-scene="radio"><span class="icon">📻</span><strong>午夜电台</strong><small>夜深了，星星为你准备了一期节目。</small></div>
+        </div>
+      </section>
+      <div class="notice">✨ 每一次探索，都是一段新的小故事。<br>不用着急，我们可以慢慢解锁。</div>
+    </div>
+
+    <div id="game-scene" style="display: none;"></div>
+  </main>
+
+  <script src="/shared/life-clock.js"></script>
+  <script src="/shared/life-presence.js"></script>
+  <script src="/shared/life-events.js"></script>
+  <script src="/shared/transition.js"></script>
+  <script src="/playground/presence.js"></script>
+  <script src="/playground/router.js"></script>
+  <script type="module" src="/playground/game-activity.js"></script>
+  <script type="module" src="/playground/main.js"></script>
+</body>
+</html>

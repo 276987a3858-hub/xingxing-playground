@@ -1,0 +1,581 @@
+/* ====== 星雾棋盘 · 柔和雾霾蓝紫星空（明亮版） ====== */
+
+/* ---------- 可扩展变量 ----------
+   场景层与棋盘层完全独立：
+   · 场景背景：进入五子棋时给 body 加 .gomoku-page-bg-active，
+     自定义图片写入 body 的 --gomoku-scene-image，作用于整个页面
+   · 棋盘背景：自定义图片写入 #game-scene 的 --gomoku-board-image，
+     只作用于棋盘区域
+   · 两个变量互不覆盖，卸载场景时各自移除
+---------------------------------- */
+.gomoku-scene {
+  /* ====== 棋盘层：严格保留原值，不修改 ====== */
+  --gomoku-board-base: #aab5d3;
+  --gomoku-board-grid: rgba(56, 66, 118, .55);
+  --gomoku-board-glow:
+    radial-gradient(circle at 50% 40%, rgba(255, 255, 255, .26), rgba(255, 255, 255, 0) 64%);
+  --gomoku-board-pink:
+    radial-gradient(circle at 88% 10%, rgba(255, 214, 231, .14), rgba(255, 214, 231, 0) 44%);
+  --gomoku-board-veil:
+    linear-gradient(155deg, rgba(208, 218, 242, .56), rgba(198, 209, 236, .58) 48%, rgba(186, 198, 231, .60));
+
+  /* 棋盘外框：保留深色对比框架 */
+  --gomoku-frame-bg:
+    linear-gradient(145deg, #0e1526, #1a2440 60%, #121a2e);
+
+  /* ====== 场景 UI 层：明亮雾霾蓝紫配色 ====== */
+  --gomoku-accent-pink: #d96a9a;
+  --gomoku-accent-blue: #6080c0;
+  --gomoku-text: #3a4a6b;
+  --gomoku-text-dim: #6a7a9a;
+  --gomoku-border: rgba(100, 120, 170, .25);
+  --gomoku-panel: rgba(240, 244, 252, .75);
+
+  max-width: 600px;
+  margin: 20px auto;
+  padding: 22px 16px 24px;
+  color: var(--gomoku-text);
+  border-radius: 22px;
+  /* 不再用大面积底色盖住页面背景 */
+  background: transparent;
+  border: 0;
+  box-shadow: none;
+}
+
+/* ====== 整页场景背景（进入五子棋时生效） ====== */
+body.gomoku-page-bg-active {
+  --gomoku-page-default:
+    radial-gradient(ellipse at 50% -10%, rgba(140, 165, 225, .25), transparent 60%),
+    radial-gradient(ellipse at 92% 108%, rgba(220, 170, 210, .12), transparent 55%),
+    linear-gradient(150deg, #dde3f0, #d4dae8 55%, #ccd6e8);
+
+  background-color: #d8def0;
+  background-image:
+    /* 极薄的氛围层：保证文字可读，又不遮住背景图 */
+    linear-gradient(160deg, rgba(240, 244, 252, .35), rgba(225, 232, 246, .45)),
+    var(--gomoku-scene-image, none),
+    var(--gomoku-page-default);
+  background-size: cover, cover, cover;
+  background-position: center center;
+  background-repeat: no-repeat;
+  background-attachment: fixed;
+}
+
+/* 顶栏改为局部半透明胶囊 */
+body.gomoku-page-bg-active .topbar {
+  padding: 8px 14px;
+  border-radius: 999px;
+  background: rgba(245, 248, 254, .65);
+  border: 1px solid rgba(120, 145, 195, .2);
+  backdrop-filter: blur(8px);
+}
+body.gomoku-page-bg-active .brand {
+  text-shadow: 0 1px 4px rgba(255, 255, 255, .6);
+}
+body.gomoku-page-bg-active .back-btn {
+  background: rgba(245, 248, 254, .7);
+  box-shadow: 0 2px 10px rgba(120, 140, 180, .15);
+}
+
+.gomoku-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 20px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid rgba(100, 120, 170, .15);
+}
+.gomoku-header h2 {
+  margin: 5px 0;
+  font-size: 25px;
+  letter-spacing: 2px;
+  color: #3a4a6b;
+  text-shadow: 0 1px 6px rgba(255, 255, 255, .5);
+}
+.gomoku-header p, .gomoku-player small { color: var(--gomoku-text-dim); }
+.gomoku-eyebrow {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 3px;
+  color: var(--gomoku-accent-blue);
+  opacity: .9;
+}
+.gomoku-exit {
+  border: 1px solid rgba(120, 145, 195, .35);
+  background: linear-gradient(145deg, rgba(235, 240, 250, .8), rgba(218, 226, 242, .9));
+  color: #4a5a7a;
+  border-radius: 20px;
+  padding: 8px 14px;
+  cursor: pointer;
+  box-shadow: 0 4px 12px rgba(120, 140, 180, .12), 0 1px 0 rgba(255, 255, 255, .5) inset;
+  transition: border-color .25s, box-shadow .25s, transform .25s, background .25s;
+}
+.gomoku-exit:hover {
+  border-color: var(--gomoku-accent-pink);
+  box-shadow: 0 0 14px rgba(217, 106, 154, .2), 0 1px 0 rgba(255, 255, 255, .5) inset;
+  transform: translateY(-1px);
+}
+.gomoku-exit:focus-visible {
+  outline: 2px solid var(--gomoku-accent-pink);
+  outline-offset: 2px;
+}
+
+/* ====== 外观设置面板（场景背景 / 棋盘背景） ====== */
+.gomoku-appearance {
+  margin: 0 0 16px;
+  padding: 11px 14px;
+  border-radius: 14px;
+  background: rgba(240, 244, 252, .7);
+  border: 1px solid rgba(120, 145, 195, .2);
+  box-shadow: 0 1px 0 rgba(255, 255, 255, .4) inset;
+}
+.gomoku-appearance summary {
+  cursor: pointer;
+  font-size: 12.5px;
+  font-weight: 600;
+  letter-spacing: .5px;
+  color: #4a5a7a;
+  user-select: none;
+}
+.gomoku-appearance summary::marker { color: var(--gomoku-accent-pink); }
+.gomoku-appearance summary:focus-visible {
+  outline: 2px solid var(--gomoku-accent-pink);
+  outline-offset: 3px;
+  border-radius: 6px;
+}
+.gomoku-appearance-body {
+  display: grid;
+  gap: 12px;
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px dashed rgba(120, 145, 195, .2);
+}
+.gomoku-appearance-row { display: grid; gap: 4px; }
+.gomoku-appearance-row > strong { font-size: 12px; color: #3a4a6b; }
+.gomoku-appearance-row > small {
+  font-size: 10.5px;
+  line-height: 1.6;
+  color: var(--gomoku-text-dim);
+}
+.gomoku-appearance-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 3px;
+}
+.gomoku-upload {
+  display: inline-block;
+  padding: 6px 13px;
+  border-radius: 9px;
+  font-size: 11.5px;
+  font-weight: 600;
+  color: #ffffff;
+  cursor: pointer;
+  background: linear-gradient(145deg, rgba(110, 135, 200, .75), rgba(80, 100, 160, .85));
+  border: 1px solid rgba(130, 155, 205, .4);
+  box-shadow: 0 4px 12px rgba(100, 120, 170, .15), 0 1px 0 rgba(255, 255, 255, .3) inset;
+  transition: border-color .2s, box-shadow .2s, transform .2s, background .2s;
+}
+.gomoku-upload:hover {
+  border-color: var(--gomoku-accent-pink);
+  box-shadow: 0 0 14px rgba(217, 106, 154, .2), 0 1px 0 rgba(255, 255, 255, .3) inset;
+  transform: translateY(-1px);
+}
+.gomoku-btn-ghost {
+  padding: 6px 13px;
+  border-radius: 9px;
+  font-size: 11.5px;
+  color: #5a6a8a;
+  cursor: pointer;
+  background: rgba(255, 255, 255, .45);
+  border: 1px solid rgba(130, 150, 195, .3);
+  transition: border-color .2s, color .2s, background .2s;
+}
+.gomoku-btn-ghost:hover {
+  border-color: var(--gomoku-accent-blue);
+  color: #3a4a6b;
+  background: rgba(255, 255, 255, .65);
+}
+.gomoku-upload:focus-within,
+.gomoku-btn-ghost:focus-visible {
+  outline: 2px solid var(--gomoku-accent-pink);
+  outline-offset: 2px;
+}
+.gomoku-appearance-state {
+  font-size: 10.5px;
+  color: var(--gomoku-text-dim);
+}
+.gomoku-appearance-hint {
+  min-height: 15px;
+  font-size: 11px;
+  line-height: 1.5;
+  color: #c46a8a;
+}
+
+.gomoku-players { display: flex; gap: 10px; margin-bottom: 14px; }
+.gomoku-player {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 12px 12px 15px;
+  border: 1px solid var(--gomoku-border);
+  border-radius: 14px;
+  background: linear-gradient(150deg, rgba(245, 248, 254, .75), rgba(232, 238, 250, .85));
+  box-shadow: 0 6px 16px rgba(120, 140, 180, .1), 0 1px 0 rgba(255, 255, 255, .4) inset;
+  transition: border-color .3s, box-shadow .3s, background .3s, transform .3s;
+}
+.gomoku-player::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 12px;
+  bottom: 12px;
+  width: 3px;
+  border-radius: 3px;
+  background: linear-gradient(180deg, rgba(217, 106, 154, .85), rgba(217, 106, 154, .25));
+  opacity: .65;
+  transition: opacity .3s;
+}
+.gomoku-player.ai-player::before {
+  background: linear-gradient(180deg, rgba(96, 128, 192, .85), rgba(96, 128, 192, .25));
+}
+.gomoku-player.active {
+  border-color: rgba(130, 155, 205, .5);
+  background: linear-gradient(150deg, rgba(235, 242, 254, .85), rgba(220, 230, 248, .9));
+  box-shadow:
+    0 0 0 1px rgba(130, 155, 205, .2),
+    0 0 20px rgba(100, 130, 190, .18),
+    0 1px 0 rgba(255, 255, 255, .4) inset;
+  transform: translateY(-1px);
+}
+.gomoku-player.active::before { opacity: 1; }
+.gomoku-player.human-player.active {
+  border-color: rgba(217, 106, 154, .5);
+  box-shadow:
+    0 0 0 1px rgba(217, 106, 154, .2),
+    0 0 20px rgba(217, 106, 154, .18),
+    0 1px 0 rgba(255, 255, 255, .4) inset;
+}
+.gomoku-player strong, .gomoku-player small { display: block; }
+.gomoku-player strong { color: #3a4a6b; }
+.gomoku-player small { font-size: 11px; margin-top: 3px; color: var(--gomoku-text-dim); }
+.player-star { font-size: 25px; }
+.player-star.pink { color: var(--gomoku-accent-pink); text-shadow: 0 0 8px rgba(217, 106, 154, .5); }
+.player-star.purple { color: var(--gomoku-accent-blue); text-shadow: 0 0 8px rgba(96, 128, 192, .5); }
+
+.gomoku-status {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  margin: 12px 0 14px;
+  padding: 9px 13px;
+  color: #4a5a7a;
+  font-size: 13px;
+  background: var(--gomoku-panel);
+  border: 1px solid rgba(120, 145, 195, .18);
+  border-radius: 999px;
+  box-shadow: 0 1px 0 rgba(255, 255, 255, .3) inset;
+}
+.status-light {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--gomoku-accent-pink);
+  box-shadow: 0 0 8px rgba(217, 106, 154, .7);
+}
+.status-light.thinking {
+  background: var(--gomoku-accent-blue);
+  box-shadow: 0 0 8px rgba(96, 128, 192, .7);
+  animation: gomoku-pulse 1s infinite;
+}
+@keyframes gomoku-pulse { 50% { opacity: .3; } }
+
+/* ====== 深色棋盘外框（严格保留） ====== */
+.gomoku-board-wrap {
+  padding: 10px;
+  border-radius: 14px;
+  background: var(--gomoku-frame-bg);
+  box-shadow:
+    0 10px 30px rgba(0, 0, 0, .35),
+    0 0 24px rgba(120, 145, 195, .1),
+    0 1px 0 rgba(255, 255, 255, .06) inset;
+  border: 1px solid rgba(120, 145, 195, .28);
+}
+
+.gomoku-coordinates.top {
+  display: grid; grid-template-columns: repeat(15, 1fr); margin-left: 16px;
+  width: calc(100% - 16px); box-sizing: border-box; padding: 0 1px;
+  color: #8a9ab8; text-align: center; font-size: 9px; font-weight: 600;
+}
+
+.gomoku-board-area { display: grid; grid-template-columns: 13px minmax(0, 1fr); gap: 3px; width: 100%; align-items: stretch; }
+
+.gomoku-coordinates.side {
+  display: grid; grid-template-rows: repeat(15, minmax(0, 1fr));
+  width: 13px; box-sizing: border-box; padding: 1px 0;
+  color: #8a9ab8; font-size: 9px; font-weight: 600; text-align: center; align-items: center;
+}
+
+/* ====== 核心：明亮雾霾蓝紫棋盘（严格保留原值） ====== */
+.gomoku-board {
+  display: grid;
+  grid-template-columns: repeat(15, minmax(0, 1fr));
+  grid-template-rows: repeat(15, minmax(0, 1fr));
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  border: 1px solid rgba(92, 108, 165, .55);
+  border-radius: 6px;
+  box-sizing: border-box;
+
+  /* 底色：柔和的雾霾蓝紫 */
+  background-color: var(--gomoku-board-base);
+
+  background-image:
+    /* 1. 网格竖线 */
+    linear-gradient(to right, transparent calc(50% - 0.5px), var(--gomoku-board-grid) calc(50% - 0.5px), var(--gomoku-board-grid) calc(50% + 0.5px), transparent calc(50% + 0.5px)),
+    /* 2. 网格横线 */
+    linear-gradient(to bottom, transparent calc(50% - 0.5px), var(--gomoku-board-grid) calc(50% - 0.5px), var(--gomoku-board-grid) calc(50% + 0.5px), transparent calc(50% + 0.5px)),
+    /* 3. 中心柔光 */
+    var(--gomoku-board-glow),
+    /* 4. 右上淡粉点缀 */
+    var(--gomoku-board-pink),
+    /* 5. 雾化遮罩：让底图变浅、变柔（已降到 50% 左右） */
+    var(--gomoku-board-veil),
+    /* 6. 底层星空图：默认 star-bg.jpg，可通过 --gomoku-board-image 覆盖 */
+    var(--gomoku-board-image, url('./star-bg.jpg'));
+
+  background-size:
+    calc(100% / 15) calc(100% / 15),
+    calc(100% / 15) calc(100% / 15),
+    100% 100%,
+    100% 100%,
+    100% 100%,
+    cover;
+
+  background-repeat:
+    repeat,
+    repeat,
+    no-repeat,
+    no-repeat,
+    no-repeat,
+    no-repeat;
+
+  background-position: center center;
+  overflow: hidden;
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, .35) inset,
+    0 0 40px rgba(90, 105, 160, .28) inset;
+}
+
+.gomoku-cell {
+  position: relative; display: flex; width: 100%; height: 100%;
+  min-width: 0; min-height: 0; padding: 0; border: 0;
+  background: none; appearance: none; align-items: center; justify-content: center; cursor: pointer;
+  border-radius: 4px;
+  transition: background .18s, box-shadow .18s;
+}
+.gomoku-cell:disabled { cursor: default; opacity: 1; }
+.gomoku-cell:not(:disabled):hover {
+  background: rgba(255, 255, 255, .28);
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, .45) inset;
+}
+.gomoku-cell:focus-visible {
+  outline: 2px solid var(--gomoku-accent-pink);
+  outline-offset: -2px;
+  z-index: 4;
+}
+
+/* ====== 琉璃星球棋子（严格保留原值） ====== */
+.gomoku-stone {
+  position: absolute; z-index: 1; width: 86%; height: 86%; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: clamp(9px, 3vw, 17px);
+  box-shadow:
+    inset -4px -4px 10px rgba(0,0,0,0.8),
+    inset 3px 3px 8px rgba(255,255,255,0.6),
+    0 5px 15px rgba(0,0,0,0.6);
+  transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+.gomoku-cell:not(:disabled):hover .gomoku-stone {
+  transform: scale(1.08) translateY(-2px);
+}
+
+/* 用户的棋子：星尘粉（保持不变） */
+.gomoku-stone.human {
+  background: radial-gradient(circle at 35% 30%, #ffffff 0%, #ffcee6 15%, #c485a5 60%, #4a3045 100%);
+  box-shadow: inset -3px -3px 8px rgba(20,0,10,0.6), inset 2px 2px 6px rgba(255,255,255,0.8), 0 0 15px rgba(255, 158, 207, 0.4);
+}
+
+/* 星星的棋子：恢复冷调深紫（深邃通透，像紫水晶/黑洞） */
+.gomoku-stone.ai {
+  background: radial-gradient(circle at 35% 30%, #ffffff 0%, #d5c4ff 15%, #7a5fbf 60%, #2a1852 100%);
+  box-shadow: inset -3px -3px 8px rgba(15,0,30,0.6), inset 2px 2px 6px rgba(255,255,255,0.8), 0 0 15px rgba(160, 120, 255, 0.5);
+}
+
+/* 最后落子的流星特效（原版） */
+.gomoku-cell.last::after {
+  content: '✦';
+  position: absolute;
+  color: #fff;
+  font-size: 12px;
+  text-shadow: 0 0 5px #fff, 0 0 15px #a885ff;
+  z-index: 2;
+  animation: star-twinkle 1.5s infinite alternate;
+}
+@keyframes star-twinkle {
+  0% { transform: scale(0.8) rotate(0deg); opacity: 0.6; }
+  100% { transform: scale(1.3) rotate(90deg); opacity: 1; }
+}
+
+/* ====== 底部 UI ====== */
+.gomoku-message {
+  position: relative;
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  padding: 15px 16px;
+  margin-top: 18px;
+  background: linear-gradient(150deg, rgba(242, 246, 254, .85), rgba(230, 236, 250, .9));
+  border: 1px solid var(--gomoku-border);
+  border-radius: 16px;
+  box-shadow: 0 10px 24px rgba(120, 140, 180, .1), 0 1px 0 rgba(255, 255, 255, .4) inset;
+}
+.gomoku-message::before {
+  content: '';
+  position: absolute;
+  top: -6px;
+  left: 22px;
+  width: 12px;
+  height: 12px;
+  background: rgba(242, 246, 254, .95);
+  border-left: 1px solid var(--gomoku-border);
+  border-top: 1px solid var(--gomoku-border);
+  transform: rotate(45deg);
+}
+.gomoku-avatar {
+  width: 34px;
+  height: 34px;
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  border-radius: 50%;
+  color: #ffffff;
+  background: radial-gradient(circle at 35% 30%, #ffffff, #c8d6ff 25%, #6f8fe0 70%, #35477a);
+  box-shadow: 0 0 0 1px rgba(200, 220, 255, .4), 0 0 16px rgba(96, 128, 192, .35);
+}
+.gomoku-message-content strong { font-size: 13px; color: #c46a8a; }
+.gomoku-message-content p { margin: 5px 0 0; font-size: 13px; line-height: 1.7; color: #4a5a7a; }
+.gomoku-error { margin-top: 10px; color: #d04060; font-size: 12px; }
+
+.gomoku-controls { display: flex; gap: 10px; margin-top: 17px; }
+.gomoku-controls button, .gomoku-result button {
+  flex: 1;
+  padding: 12px;
+  border-radius: 12px;
+  border: 1px solid rgba(130, 155, 205, .35);
+  color: #4a5a7a;
+  background: linear-gradient(145deg, rgba(235, 240, 250, .8), rgba(218, 226, 242, .9));
+  cursor: pointer;
+  box-shadow: 0 6px 16px rgba(120, 140, 180, .1), 0 1px 0 rgba(255, 255, 255, .4) inset;
+  transition: background .25s, border-color .25s, box-shadow .25s, transform .2s;
+}
+.gomoku-controls button:hover, .gomoku-result button:hover {
+  background: linear-gradient(145deg, rgba(225, 232, 248, .9), rgba(208, 218, 240, .95));
+  border-color: var(--gomoku-accent-pink);
+  color: #3a4a6b;
+  box-shadow: 0 0 16px rgba(217, 106, 154, .18), 0 1px 0 rgba(255, 255, 255, .5) inset;
+  transform: translateY(-1px);
+}
+.gomoku-controls button:active, .gomoku-result button:active { transform: translateY(0) scale(.985); }
+.gomoku-controls button:focus-visible, .gomoku-result button:focus-visible {
+  outline: 2px solid var(--gomoku-accent-pink);
+  outline-offset: 2px;
+}
+.gomoku-controls button:disabled { opacity: .35; cursor: not-allowed; transform: none; box-shadow: none; }
+
+.gomoku-history {
+  margin-top: 18px;
+  padding: 12px 14px;
+  font-size: 12px;
+  color: var(--gomoku-text-dim);
+  background: var(--gomoku-panel);
+  border: 1px solid rgba(120, 145, 195, .15);
+  border-radius: 14px;
+}
+.gomoku-history > strong { color: #4a5a7a; letter-spacing: 1px; }
+.gomoku-history > div { display: flex; flex-wrap: wrap; gap: 7px; margin-top: 9px; }
+.gomoku-history-item {
+  padding: 5px 8px;
+  border-radius: 8px;
+  color: #5a6a8a;
+  background: linear-gradient(145deg, rgba(235, 240, 250, .6), rgba(220, 228, 244, .7));
+  border: 1px solid rgba(130, 150, 195, .18);
+  transition: border-color .2s, box-shadow .2s, color .2s;
+}
+.gomoku-history-item:last-child {
+  color: #c46a8a;
+  border-color: rgba(217, 106, 154, .4);
+  box-shadow: 0 0 10px rgba(217, 106, 154, .12);
+}
+
+.gomoku-result {
+  margin-top: 18px;
+  padding: 18px;
+  text-align: center;
+  border-radius: 16px;
+  background: linear-gradient(155deg, rgba(238, 244, 254, .88), rgba(222, 232, 248, .92));
+  border: 1px solid rgba(130, 155, 205, .25);
+  box-shadow: 0 10px 26px rgba(120, 140, 180, .12), 0 1px 0 rgba(255, 255, 255, .4) inset;
+  animation: gomoku-rise .35s ease-out;
+}
+.gomoku-result > div {
+  font-size: 28px;
+  color: #3a4a6b;
+  margin-bottom: 8px;
+  text-shadow: 0 0 12px rgba(96, 128, 192, .4);
+}
+.gomoku-result strong { display: block; line-height: 1.7; margin-bottom: 14px; color: #3a4a6b; }
+@keyframes gomoku-rise {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@media (max-width: 480px) {
+  .gomoku-scene { padding: 18px 12px 20px; border-radius: 18px; }
+  .gomoku-header { align-items: flex-start; }
+  .gomoku-header h2 { font-size: 22px; }
+  .gomoku-players { gap: 8px; }
+  .gomoku-player { padding: 10px 10px 10px 13px; }
+  .gomoku-history { padding: 10px 12px; }
+}
+
+@media (max-width: 380px) {
+  .gomoku-scene { padding: 14px 8px; }
+  .gomoku-board-wrap { padding: 7px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .status-light.thinking,
+  .gomoku-cell.last::after,
+  .gomoku-result { animation: none !important; }
+  .gomoku-player,
+  .gomoku-exit,
+  .gomoku-upload,
+  .gomoku-btn-ghost,
+  .gomoku-controls button,
+  .gomoku-result button,
+  .gomoku-history-item,
+  .gomoku-cell { transition: none; }
+}
+
+/* 气泡弹出的动画 */
+@keyframes bubble-pop {
+  0% { transform: scale(0.8) translateY(20px); opacity: 0; }
+  100% { transform: scale(1) translateY(0); opacity: 1; }
+}
